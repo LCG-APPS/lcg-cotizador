@@ -298,6 +298,7 @@ body.preview{background:#7d8aa0}
     <div style="grid-column:span 2"><label>Ruta del sitio</label><input id="spPath" placeholder="/sites/4COMERCIAL"></div>
     <div><label>Nombre de la lista Clientes</label><input id="spListCli" value="LCG_Clientes"></div>
     <div><label>Nombre de la lista Historial</label><input id="spListHist" value="LCG_Historial_Cotizaciones"></div>
+    <div style="grid-column:span 2"><label>Nombre de la lista Detalle por producto</label><input id="spListDet" value="LCG_Detalle_Cotizacion"></div>
   </div>
   <div class="hint" style="margin:-4px 0 14px">
     Ver la guía <b>LCG_GUIA_CONEXION_SHAREPOINT.md</b> para crear el "Client ID" (registro de app, una sola vez, lo hace el administrador del tenant). Sin esto, el cotizador sigue funcionando en modo local (importar/copiar manual), tal como hasta ahora.
@@ -391,7 +392,7 @@ let prodSeq = 0;
 
 /* ================= SHAREPOINT (Clientes en vivo + Historial automático) ================= */
 const SP_SCOPES = ['Sites.ReadWrite.All'];
-let spMsal = null, spAccount = null, spSiteId = null, spListCliId = null, spListHistId = null;
+let spMsal = null, spAccount = null, spSiteId = null, spListCliId = null, spListHistId = null, spListDetId = null;
 
 function spConfig(){
   try{ return JSON.parse(localStorage.getItem('lcg_sp_config')||'null'); }catch(e){ return null; }
@@ -400,7 +401,8 @@ function guardarConfigSP(){
   const cfg = {
     clientId: spClientId.value.trim(), tenant: spTenant.value.trim(),
     host: spHost.value.trim().replace(/^https?:\/\//,''), path: spPath.value.trim(),
-    listCli: spListCli.value.trim()||'LCG_Clientes', listHist: spListHist.value.trim()||'LCG_Historial_Cotizaciones'
+    listCli: spListCli.value.trim()||'LCG_Clientes', listHist: spListHist.value.trim()||'LCG_Historial_Cotizaciones',
+    listDet: spListDet.value.trim()||'LCG_Detalle_Cotizacion'
   };
   if(!cfg.clientId||!cfg.tenant||!cfg.host||!cfg.path){ spStatusMsg.textContent='Faltan campos obligatorios (Client ID, Tenant, Hostname, Ruta).'; spStatusMsg.style.color='#c0392b'; return; }
   localStorage.setItem('lcg_sp_config', JSON.stringify(cfg));
@@ -411,6 +413,7 @@ function abrirSP(){
   const cfg = spConfig()||{};
   spClientId.value=cfg.clientId||''; spTenant.value=cfg.tenant||''; spHost.value=cfg.host||'';
   spPath.value=cfg.path||''; spListCli.value=cfg.listCli||'LCG_Clientes'; spListHist.value=cfg.listHist||'LCG_Historial_Cotizaciones';
+  spListDet.value=cfg.listDet||'LCG_Detalle_Cotizacion';
   spStatusMsg.textContent = spAccount ? ('Conectado como '+spAccount.username) : 'Sin conectar. El cotizador funciona en modo local (importar/copiar manual) mientras tanto.';
   spStatusMsg.style.color = spAccount ? 'var(--ok)' : 'var(--mut)';
   dlgSP.showModal();
@@ -483,9 +486,11 @@ async function spResolverSitioYListas(){
   const listas = await spGraph('/sites/'+spSiteId+'/lists?$select=id,displayName');
   const lCli = listas.value.find(l=>l.displayName===cfg.listCli);
   const lHist = listas.value.find(l=>l.displayName===cfg.listHist);
+  const lDet = listas.value.find(l=>l.displayName===cfg.listDet);
   if(!lCli) throw new Error('No se encontró la lista "'+cfg.listCli+'" en el sitio.');
   if(!lHist) throw new Error('No se encontró la lista "'+cfg.listHist+'" en el sitio.');
-  spListCliId = lCli.id; spListHistId = lHist.id;
+  if(!lDet) throw new Error('No se encontró la lista "'+cfg.listDet+'" en el sitio.');
+  spListCliId = lCli.id; spListHistId = lHist.id; spListDetId = lDet.id;
 }
 async function cargarClientesSP(){
   let url = '/sites/'+spSiteId+'/lists/'+spListCliId+'/items?expand=fields&$top=500';
@@ -523,6 +528,24 @@ async function registrarHistorialSP(fila){
     console.error('No se pudo registrar en LCG_Historial_Cotizaciones:', e);
     return false;
   }
+}
+async function registrarDetalleSP(fila, lineas){
+  if(!spAccount || !spListDetId || !lineas.length) return false;
+  let ok = true;
+  for(const ln of lineas){
+    try{
+      await spGraph('/sites/'+spSiteId+'/lists/'+spListDetId+'/items', {
+        method:'POST',
+        body: JSON.stringify({ fields: {
+          Title: fila.codigo, Cliente: fila.cliente, Fecha_Cotizacion: fila.fecha,
+          Mayorista: ln.mayorista, Descripcion: ln.desc, Part_Number: ln.pn,
+          Cantidad: ln.qty, Costo_Unitario: ln.costoU, Precio_Unitario: ln.precioU,
+          Total_Costo: ln.totC, Total_Venta: ln.totV, Utilidad_Linea: ln.utilLinea
+        }})
+      });
+    }catch(e){ console.error('No se pudo registrar linea de detalle:', e); ok = false; }
+  }
+  return ok;
 }
 async function intentarReconectarSP(){
   const cfg = spConfig();
@@ -1064,15 +1087,20 @@ function docFileName(){
 }
 function filaHistorial(){
   const s=getState(), mon=s.moneda, tc=fx(s.tc)||1;
-  const rs=s.prods.filter(p=>p.desc).map(p=>calcProd(p,mon,tc));
+  const rs=s.prods.filter(p=>p.desc).map(p=>Object.assign({}, p, calcProd(p,mon,tc)));
   if(!rs.length) return null;
   const t=totales(rs);
   const inv=r2(rs.reduce((a,r)=>a+r.totC,0));
   const util=r2(t.sub-inv), com=r2(util*COMISION);
   const cli = CLIENTES.find(x=>x.empresa.toLowerCase()===String(s.cliente.empresa||'').toLowerCase());
-  return { codigo:s.codigo, cliente:s.cliente.empresa, id_cliente:cli&&cli.id_cliente||'', vendedor:s.consultor,
+  const fila = { codigo:s.codigo, cliente:s.cliente.empresa, id_cliente:cli&&cli.id_cliente||'', vendedor:s.consultor,
            fecha:s.fecha, moneda:mon, tc:tc, venta:r2(t.sub), costo:inv, utilidad:util,
            comision_pct:COMISION, comision:com, estado:'Cotizado' };
+  const lineas = rs.map(r=>({
+    mayorista:r.mayorista, desc:r.desc, pn:r.pn, qty:r.qty,
+    costoU:r2(r.cuV), precioU:r.pvU, totC:r.totC, totV:r.totV, utilLinea:r2(r.totV-r.totC)
+  }));
+  return { fila, lineas };
 }
 async function descargarPDF(){
   const code=document.getElementById('codigo').value.trim();
@@ -1082,12 +1110,14 @@ async function descargarPDF(){
   window.print();
   setTimeout(()=>document.title=t,800);
   localStorage.setItem('lcg_last_code',code);
-  // Registro automático de costo/utilidad/comisión en LCG_Historial_Cotizaciones (si SharePoint está conectado)
-  const fila = filaHistorial();
-  if(fila){
+  // Registro automático de costo/utilidad/comisión (encabezado) y detalle por producto en SharePoint
+  const h = filaHistorial();
+  if(h){
     if(spAccount){
-      const ok = await registrarHistorialSP(fila);
+      const ok = await registrarHistorialSP(h.fila);
       if(!ok) console.warn('Cotización '+code+' generada, pero no se pudo registrar el historial en SharePoint. Usa "Copiar fila para registro" como respaldo.');
+      const okDet = await registrarDetalleSP(h.fila, h.lineas);
+      if(!okDet) console.warn('Cotización '+code+': el encabezado se registró, pero hubo un problema guardando el detalle por producto.');
     } else {
       console.info('SharePoint no conectado: registra esta cotización manualmente con "Copiar fila para registro".');
     }
