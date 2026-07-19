@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cotizador — LACRUZ GROUP</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://alcdn.msauth.net/browser/3.7.1/js/msal-browser.min.js"></script>
+<script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Roboto:wght@400;600;700&display=swap" rel="stylesheet">
@@ -427,7 +427,7 @@ async function initMsal(){
       auth: { clientId: cfg.clientId, authority: 'https://login.microsoftonline.com/'+cfg.tenant, redirectUri: window.location.href.split('#')[0] },
       cache: { cacheLocation: 'localStorage' }
     });
-    await spMsal.initialize();
+    if(typeof spMsal.initialize === 'function') await spMsal.initialize();
   }
   return spMsal;
 }
@@ -513,9 +513,9 @@ async function registrarHistorialSP(fila){
       method:'POST',
       body: JSON.stringify({ fields: {
         Title: fila.codigo, Cliente: fila.cliente, ID_Cliente: fila.id_cliente||'',
-        Vendedor: fila.vendedor, Fecha_Cotizacion: fila.fecha, Moneda: fila.moneda,
-        Tipo_Cambio: fila.tc, Venta_Sin_IGV: fila.venta, Costo: fila.costo, Utilidad: fila.utilidad,
-        Comision_Pct: fila.comision_pct, Comision_Monto: fila.comision, Estado: fila.estado||'Cotizado'
+        Vendedor: fila.vendedor, Fecha_cotizaci_x00f3_n: fila.fecha, Moneda: fila.moneda,
+        Tipo_Cambio: fila.tc, Venta_sin_IGV: fila.venta, Costo: fila.costo, Utilidad: fila.utilidad,
+        Comisi_x00f3_n__x0025_: fila.comision_pct, Comision_Monto: fila.comision, Estado: fila.estado||'Cotizado'
       }})
     });
     return true;
