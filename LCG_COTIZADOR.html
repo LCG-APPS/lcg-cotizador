@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cotizador — LACRUZ GROUP</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://alcdn.msauth.net/browser/3.7.1/js/msal-browser.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Roboto:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0A1F40; --navy2:#0D2547; --cyan:#24C0EB; --cyan-d:#1E9DC1;
+  --ink:#1c2430; --mut:#6b7686; --line:#dde3ec; --bg:#f2f5f9; --card:#ffffff;
+  --ok:#1d9e6f; --warn:#b97c10; --intern:#fff8e9; --intern-b:#f0dcae;
+}
+*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{margin:0;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
+
+/* ===== TOP BAR ===== */
+.topbar{background:var(--navy);color:#fff;display:flex;align-items:center;gap:16px;padding:10px 22px;position:sticky;top:0;z-index:50;box-shadow:0 2px 10px rgba(10,31,64,.25)}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-grid{display:grid;grid-template-columns:repeat(3,8px);grid-gap:2px}
+.logo-grid span{width:8px;height:8px;background:var(--cyan)}
+.logo-grid span:nth-child(2),.logo-grid span:nth-child(4){background:#fff}
+.logo-txt{line-height:1}
+.logo-txt b{font-size:16px;letter-spacing:2.5px;display:block}
+.logo-txt small{font-size:8.5px;letter-spacing:1.6px;color:var(--cyan)}
+.topbar h1{font-size:15px;font-weight:600;margin:0 0 0 8px;letter-spacing:.5px;flex:1;border-left:1px solid rgba(255,255,255,.25);padding-left:18px}
+.topbar .btns{display:flex;gap:8px}
+button{font-family:inherit;cursor:pointer;border:none;border-radius:7px;font-size:13px;font-weight:600;padding:8px 14px;transition:.15s}
+.b-ghost{background:rgba(255,255,255,.12);color:#fff}
+.b-ghost:hover{background:rgba(255,255,255,.22)}
+.b-cyan{background:var(--cyan);color:var(--navy)}
+.b-cyan:hover{background:#4fd2ee}
+.b-line{background:#fff;color:var(--navy);border:1px solid var(--line)}
+.b-line:hover{border-color:var(--cyan)}
+.b-danger{background:transparent;color:#c0392b;font-size:17px;padding:2px 8px}
+
+/* ===== LAYOUT ===== */
+.wrap{max-width:1180px;margin:18px auto 80px;padding:0 16px;display:grid;grid-template-columns:1fr 295px;gap:16px;align-items:start}
+@media(max-width:900px){.wrap{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-bottom:16px}
+.card h2{margin:0 0 14px;font-size:13px;letter-spacing:1.2px;text-transform:uppercase;color:var(--navy);display:flex;align-items:center;gap:8px}
+.card h2 .num{background:var(--navy);color:var(--cyan);width:22px;height:22px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:12px}
+.grid{display:grid;gap:10px 14px}
+.g4{grid-template-columns:repeat(4,1fr)} .g3{grid-template-columns:repeat(3,1fr)} .g2{grid-template-columns:repeat(2,1fr)}
+@media(max-width:700px){.g4,.g3{grid-template-columns:repeat(2,1fr)}}
+label{display:block;font-size:11px;font-weight:600;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
+input,select,textarea{width:100%;font-family:inherit;font-size:13.5px;padding:7px 9px;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--ink)}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 3px rgba(44,194,227,.18)}
+input[readonly]{background:#f5f7fa;color:var(--mut)}
+textarea{resize:vertical}
+.hint{font-size:11px;color:var(--mut);margin-top:3px}
+
+/* ===== PRODUCTOS ===== */
+.prod{border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px;background:#fbfcfe}
+.prod-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.prod-head .idx{background:var(--cyan);color:var(--navy);font-weight:700;border-radius:6px;padding:2px 9px;font-size:12px}
+.prod-head .res{margin-left:auto;font-size:12.5px;color:var(--mut)}
+.prod-head .res b{color:var(--navy);font-size:14px}
+.intern{background:var(--intern);border:1px dashed var(--intern-b);border-radius:8px;padding:10px 12px;margin-top:10px}
+.intern .tag{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--warn);text-transform:uppercase}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;font-size:12px}
+.chip{background:#fff;border:1px solid var(--line);border-radius:6px;padding:4px 9px}
+.chip b{color:var(--navy)}
+
+/* ===== PANEL ===== */
+.panel{position:sticky;top:70px}
+.panel .card{padding:16px}
+.panel h3{margin:0 0 10px;font-size:12px;letter-spacing:1.2px;text-transform:uppercase;color:var(--navy)}
+.trow{display:flex;justify-content:space-between;padding:6px 0;font-size:13.5px;border-bottom:1px dashed var(--line)}
+.trow:last-child{border:none}
+.trow.big{font-size:16px;font-weight:700;color:var(--navy)}
+.trow .pos{color:var(--ok);font-weight:700}
+.badge-int{display:inline-block;background:var(--intern);border:1px solid var(--intern-b);color:var(--warn);font-size:10px;font-weight:700;letter-spacing:.8px;padding:2px 7px;border-radius:5px;margin-bottom:8px}
+
+/* ===== MÓVIL ===== */
+@media(max-width:700px){
+  .topbar{flex-wrap:wrap;gap:10px;padding:10px 12px}
+  .topbar h1{display:none}
+  .topbar .btns{flex-wrap:wrap;justify-content:flex-end;gap:6px}
+  .topbar .btns button{padding:7px 10px;font-size:12px}
+  input,select,textarea{font-size:16px} /* evita zoom automático en iOS */
+  .panel{position:static}
+  .wrap{margin-top:12px}
+}
+
+/* ===== PRINT DOC ===== */
+#printDoc{display:none}
+@media print{
+  body{background:#fff}
+  .topbar,.wrap{display:none!important}
+  #printDoc{display:block}
+  @page{size:A4;margin:0}
+}
+.doc{width:210mm;min-height:297mm;margin:0 auto;background:#fff;color:#1a2332;font-size:9.5pt;display:flex;flex-direction:column}
+.doc-head{background:var(--navy);color:#fff;padding:9mm 12mm 7mm;display:flex;justify-content:space-between;align-items:center}
+.doc-head .logo-txt b{font-size:17pt;letter-spacing:3px}
+.doc-head .logo-txt small{font-size:6.5pt;letter-spacing:2px}
+.doc-head .logo-grid{grid-template-columns:repeat(3,11px)}
+.doc-head .logo-grid span{width:11px;height:11px}
+.doc-num{text-align:right}
+.doc-num .t{font-size:8pt;letter-spacing:2.5px;color:var(--cyan);font-weight:700}
+.doc-num .n{font-size:15pt;font-weight:700;letter-spacing:1px}
+.doc-num .d{font-size:8pt;color:#c7d3e6;margin-top:2px}
+.doc-band{background:var(--cyan);color:var(--navy);font-weight:700;padding:2.2mm 12mm;font-size:10pt;letter-spacing:.5px}
+.doc-body{padding:6mm 12mm;flex:1}
+.doc-cols{display:flex;gap:6mm;margin-bottom:5mm}
+.doc-box{flex:1;border:1px solid #d8dfe9;border-radius:2mm;padding:3mm 4mm}
+.doc-box .bt{font-size:7pt;font-weight:700;letter-spacing:1.5px;color:var(--cyan-d);text-transform:uppercase;margin-bottom:1.5mm}
+.doc-box table{width:100%;border-collapse:collapse;font-size:8.5pt}
+.doc-box td{padding:.8mm 0;vertical-align:top}
+.doc-box td:first-child{color:#67738a;font-weight:600;width:24mm;white-space:nowrap;padding-right:2mm}
+.doc-items{width:100%;border-collapse:collapse;margin:2mm 0 4mm;font-size:8.8pt}
+.doc-items th{background:var(--navy);color:#fff;padding:2.2mm 2.5mm;text-align:left;font-size:7.5pt;letter-spacing:.8px;text-transform:uppercase}
+.doc-items th.r,.doc-items td.r{text-align:right}
+.doc-items th.c,.doc-items td.c{text-align:center}
+.doc-items td{padding:2mm 2.5mm;border-bottom:1px solid #e3e8f0;vertical-align:top}
+.doc-items tr:nth-child(even) td{background:#f6f9fc}
+.doc-items .pn{color:#67738a;font-size:7.8pt}
+.doc-tot{display:flex;justify-content:flex-end;margin-bottom:5mm}
+.doc-tot table{border-collapse:collapse;font-size:9.5pt;min-width:62mm}
+.doc-tot td{padding:1.6mm 3mm}
+.doc-tot td:last-child{text-align:right;font-variant-numeric:tabular-nums}
+.doc-tot tr.tt td{background:var(--navy);color:#fff;font-weight:700;font-size:11pt}
+.doc-tot tr.tt td:last-child{color:var(--cyan)}
+.doc-cond{font-size:7.8pt;color:#3d4757;line-height:1.55;white-space:pre-line;border-top:2px solid var(--cyan);padding-top:2.5mm}
+.doc-cond .ct{font-size:8pt;font-weight:700;letter-spacing:1.5px;color:var(--navy);margin-bottom:1mm}
+.doc-foot{background:var(--navy);color:#c7d3e6;padding:3.5mm 12mm;font-size:7.5pt;display:flex;justify-content:space-between;align-items:center}
+.doc-foot b{color:#fff}
+.doc-foot .tag360{color:var(--cyan);font-style:italic;font-weight:700;font-size:8.5pt}
+
+.doc-imgs{margin-bottom:5mm;page-break-inside:avoid}
+.doc-imgs .ct{font-size:8pt;font-weight:700;letter-spacing:1.5px;color:var(--navy);margin-bottom:2mm}
+.doc-imggrid{display:flex;flex-wrap:wrap;gap:4mm}
+.doc-imggrid figure{margin:0;width:55mm}
+.imgbox{width:55mm;height:40mm;border:1px solid #d8dfe9;border-radius:2mm;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.imgbox img{max-width:100%;max-height:100%;object-fit:contain}
+.doc-imggrid figcaption{font-size:7pt;color:#67738a;text-align:center;margin-top:1mm}
+
+/* preview mode on screen */
+body.preview .wrap,body.preview .topbar .btns .hide-prev{display:none}
+body.preview #printDoc{display:block;padding:20px 0}
+body.preview{background:#7d8aa0}
+.doc{box-shadow:0 4px 24px rgba(0,0,0,.25)}
+@media print{.doc{box-shadow:none}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo" id="appLogo">
+    <div class="logo-grid"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+    <div class="logo-txt"><b>LACRUZ<br>GROUP</b></div>
+  </div>
+  <h1>COTIZADOR</h1>
+  <div class="btns">
+    <button class="b-ghost hide-prev" id="btnSP" onclick="abrirSP()" title="Conectar con SharePoint (Clientes en vivo + Historial automático)">☁ SharePoint: <span id="spEstado">desconectado</span></button>
+    <button class="b-ghost hide-prev" onclick="abrirAjustes()" title="Personalizar logo y tipografía">⚙</button>
+    <button class="b-ghost hide-prev" onclick="nuevaCot()">✦ Nueva</button>
+    <button class="b-ghost hide-prev" onclick="guardarJSON()" title="Guarda el borrador editable (.json) para retomar la cotización luego">⭳ Borrador</button>
+    <button class="b-ghost hide-prev" onclick="document.getElementById('fileJSON').click()" title="Abrir un borrador .json">⭱ Abrir</button>
+    <button class="b-ghost" id="btnPrev" onclick="togglePreview()">Vista previa</button>
+    <button class="b-cyan" onclick="descargarPDF()" title="Genera el PDF para el cliente">⎙ Guardar PDF</button>
+    <button class="b-cyan" onclick="abrirEnvio()" title="Enviar por correo o WhatsApp">✉ Enviar</button>
+  </div>
+  <input type="file" id="fileJSON" accept=".json" style="display:none" onchange="abrirJSON(this)">
+</div>
+
+<div class="wrap">
+<div><!-- columna principal -->
+
+  <div class="card">
+    <h2><span class="num">1</span> Datos de la cotización</h2>
+    <div class="grid g4">
+      <div><label>Código *</label><input id="codigo" placeholder="26-00480" oninput="recalc()"></div>
+      <div style="grid-column:span 3"><label>Referencia / Título</label><input id="referencia" placeholder="Ej.: IMPRESORA TICKETERA — PROYECTO CABLEADO" oninput="recalc()"></div>
+      <div><label>Consultor <a href="#" onclick="gestConsultores();return false" style="float:right;font-size:10px;color:var(--cyan-d);text-transform:none;font-weight:600">⚙ gestionar</a></label><select id="consultor" onchange="recalc()"></select></div>
+      <div><label>Celular</label><input id="consTel" readonly></div>
+      <div style="grid-column:span 2"><label>Correo consultor</label><input id="consMail" readonly></div>
+      <div><label>Fecha emisión</label><input type="date" id="fecha" onchange="recalc()"></div>
+      <div><label>Validez (días)</label><input type="number" id="validez" value="5" min="1" onchange="recalc()"></div>
+      <div><label>Fecha límite</label><input id="fechaLim" readonly></div>
+      <div><label>Forma de pago</label><select id="pago" onchange="recalc()">
+        <option>CONTADO</option><option>CRÉDITO — FACTURA 15 DÍAS</option>
+        <option>CRÉDITO — FACTURA 30 DÍAS</option><option>CRÉDITO — FACTURA 45 DÍAS</option><option>CRÉDITO — FACTURA 60 DÍAS</option>
+      </select></div>
+      <div><label>Moneda de venta</label><select id="moneda" onchange="recalc()">
+        <option value="PEN">Soles (S/)</option><option value="USD">Dólares (US$)</option>
+      </select></div>
+      <div><label>Tipo de cambio (S/ x US$)</label><input type="number" id="tc" value="3.75" step="0.001" min="1" oninput="recalc()"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">2</span> Cliente</h2>
+    <div class="grid g2" style="margin-bottom:10px">
+      <div>
+        <label>Buscar empresa</label>
+        <input id="buscaCli" list="dlClientes" placeholder="Escribe para buscar…" onchange="pickCliente(this.value)">
+        <datalist id="dlClientes"></datalist>
+        <div class="hint" id="hintCli"></div>
+      </div>
+      <div style="display:flex;align-items:flex-end;gap:8px">
+        <button class="b-line" onclick="limpiarCliente()">Cliente nuevo</button>
+        <button class="b-line" onclick="document.getElementById('fileCli').click()">Importar clientes (Excel/CSV)</button>
+        <input type="file" id="fileCli" accept=".xlsx,.xls,.csv" style="display:none" onchange="importarClientes(this)">
+      </div>
+    </div>
+    <div class="grid g3">
+      <div style="grid-column:span 2"><label>Empresa *</label><input id="cEmpresa" oninput="recalc()"></div>
+      <div><label>RUC</label><input id="cRuc" oninput="recalc()"></div>
+      <div><label>Contacto</label><input id="cContacto" oninput="recalc()"></div>
+      <div><label>Correo</label><input id="cCorreo" oninput="recalc()"></div>
+      <div><label>Teléfono</label><input id="cTelefono" oninput="recalc()"></div>
+      <div style="grid-column:span 2"><label>Dirección</label><input id="cDireccion" oninput="recalc()"></div>
+      <div><label>Distrito</label><input id="cDistrito" oninput="recalc()"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">3</span> Productos y servicios</h2>
+    <div id="prods"></div>
+    <button class="b-line" onclick="addProd()">＋ Agregar producto</button>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">4</span> Condiciones comerciales <a href="#" onclick="editarPlantilla();return false" style="margin-left:auto;font-size:10px;color:var(--cyan-d);text-transform:none;font-weight:600">⚙ editar plantilla general</a></h2>
+    <textarea id="condiciones" rows="9" oninput="condDirty=true"></textarea>
+    <div class="hint">Se actualiza automáticamente al cambiar moneda/forma de pago/validez, salvo que la edites manualmente.
+      <button class="b-line" style="padding:3px 8px;font-size:11px" onclick="guardarCondTpl()">Guardar como plantilla</button>
+      <button class="b-line" style="padding:3px 8px;font-size:11px" onclick="condDirty=false;recalc()">Restaurar plantilla</button></div>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">5</span> Garantía y devoluciones</h2>
+    <textarea id="garantias" rows="9" oninput="saveDraft()"></textarea>
+    <div class="hint">Política estándar del canal TI. Puedes ajustarla por cotización, o
+      <button class="b-line" style="padding:3px 8px;font-size:11px" onclick="guardarGarTpl()">Guardar como plantilla</button>
+      <button class="b-line" style="padding:3px 8px;font-size:11px" onclick="restaurarGar()">Restaurar estándar</button></div>
+  </div>
+
+</div>
+
+<aside class="panel"><!-- columna resumen -->
+  <div class="card">
+    <h3>Resumen de venta</h3>
+    <div class="trow"><span>Subtotal (sin IGV)</span><b id="rSub">—</b></div>
+    <div class="trow"><span>IGV (18%)</span><b id="rIgv">—</b></div>
+    <div class="trow big"><span>TOTAL</span><span id="rTot">—</span></div>
+  </div>
+  <div class="card" style="background:var(--intern);border-color:var(--intern-b)">
+    <span class="badge-int">USO INTERNO — NO SE IMPRIME</span>
+    <div class="trow"><span>Inversión (costo)</span><b id="rInv">—</b></div>
+    <div class="trow"><span>Utilidad bruta</span><b id="rUtil">—</b></div>
+    <div class="trow"><span>Margen efectivo</span><b id="rMgn">—</b></div>
+    <div class="trow"><span>Comisión vendedor (4%)</span><span class="pos" id="rCom">—</span></div>
+    <div class="trow"><span>Utilidad neta empresa</span><b id="rNeta">—</b></div>
+    <button class="b-line" style="width:100%;margin-top:10px" onclick="copiarRegistro()">📋 Copiar fila para registro</button>
+    <div class="hint" style="margin-top:5px">Pégala en REGISTRO_COMISIONES.xlsx (hoja Registro)</div>
+  </div>
+</aside>
+</div>
+
+<dialog id="dlgConf" style="border:1px solid var(--line);border-radius:12px;padding:18px;max-width:480px;width:92%">
+  <h3 style="margin:0 0 4px;color:var(--navy);font-size:14px">Personalización</h3>
+  <p style="margin:0 0 12px;font-size:11.5px;color:var(--mut)">Se aplica al cotizador y al PDF, en este equipo. Para todo el equipo de ventas, actualizar el COTIZADOR.html compartido.</p>
+  <label>Logo de la empresa</label>
+  <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px">
+    <button class="b-line" onclick="document.getElementById('confLogoFile').click()">🖼 Subir logo</button>
+    <input type="file" id="confLogoFile" accept="image/*" style="display:none" onchange="setLogo(this)">
+    <span id="confPrev"></span>
+    <button class="b-danger" onclick="quitarLogo()" title="Volver al logo estándar">✕</button>
+  </div>
+  <div class="hint" style="margin:-8px 0 12px">Recomendado: PNG con fondo transparente. Se ajusta solo a la app y al encabezado del PDF.</div>
+  <label>Colores</label>
+  <div style="display:flex;gap:16px;align-items:flex-end;margin-bottom:14px;flex-wrap:wrap">
+    <span style="display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--mut);font-weight:600">PRIMARIO<input type="color" id="confCNavy" value="#0A1F40" onchange="cambiarColor('lcg_c_navy',this.value)" style="padding:2px;height:36px;width:58px;cursor:pointer"></span>
+    <span style="display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--mut);font-weight:600">ACENTO<input type="color" id="confCCyan" value="#24C0EB" onchange="cambiarColor('lcg_c_cyan',this.value)" style="padding:2px;height:36px;width:58px;cursor:pointer"></span>
+    <span style="display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--mut);font-weight:600">FONDO APP<input type="color" id="confCBg" value="#F2F5F9" onchange="cambiarColor('lcg_c_bg',this.value)" style="padding:2px;height:36px;width:58px;cursor:pointer"></span>
+    <button class="b-line" onclick="restaurarColores()">Restaurar</button>
+  </div>
+  <div class="hint" style="margin:-8px 0 12px">Primario y acento también aplican al PDF (encabezado, banda de referencia, tabla y totales). El fondo solo afecta la app.</div>
+  <label>Tipografía</label>
+  <select id="confFont" onchange="cambiarFont()" style="margin-bottom:14px"></select>
+  <div style="display:flex"><span style="flex:1"></span><button class="b-cyan" onclick="dlgConf.close()">Listo</button></div>
+</dialog>
+
+<dialog id="dlgSP" style="border:1px solid var(--line);border-radius:12px;padding:18px;max-width:560px;width:94%">
+  <h3 style="margin:0 0 4px;color:var(--navy);font-size:14px">☁ Conexión con SharePoint — sitio "4. COMERCIAL"</h3>
+  <p style="margin:0 0 12px;font-size:11.5px;color:var(--mut)">Una vez conectado: los clientes se leen en vivo desde <b>LCG_Clientes</b>, y cada "Guardar PDF" registra automáticamente el costo/utilidad en <b>LCG_Historial_Cotizaciones</b>. Se configura una sola vez por equipo (queda guardado en este navegador).</p>
+  <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px 14px;margin-bottom:10px">
+    <div style="grid-column:span 2"><label>Client ID (App registrada en Azure AD / Entra ID)</label><input id="spClientId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"></div>
+    <div><label>Tenant ID (o dominio, ej. lacruzgroup.onmicrosoft.com)</label><input id="spTenant" placeholder="lacruzgroup.onmicrosoft.com"></div>
+    <div><label>Hostname del sitio</label><input id="spHost" placeholder="lacruzgroup.sharepoint.com"></div>
+    <div style="grid-column:span 2"><label>Ruta del sitio</label><input id="spPath" placeholder="/sites/4COMERCIAL"></div>
+    <div><label>Nombre de la lista Clientes</label><input id="spListCli" value="LCG_Clientes"></div>
+    <div><label>Nombre de la lista Historial</label><input id="spListHist" value="LCG_Historial_Cotizaciones"></div>
+  </div>
+  <div class="hint" style="margin:-4px 0 14px">
+    Ver la guía <b>LCG_GUIA_CONEXION_SHAREPOINT.md</b> para crear el "Client ID" (registro de app, una sola vez, lo hace el administrador del tenant). Sin esto, el cotizador sigue funcionando en modo local (importar/copiar manual), tal como hasta ahora.
+  </div>
+  <div id="spStatusMsg" style="font-size:12px;font-weight:600;margin-bottom:12px;color:var(--mut)"></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button class="b-line" onclick="guardarConfigSP()">Guardar configuración</button>
+    <button class="b-cyan" onclick="conectarSP()">🔐 Conectar con Microsoft</button>
+    <button class="b-line" onclick="desconectarSP()">Desconectar</button>
+    <span style="flex:1"></span>
+    <button class="b-cyan" onclick="dlgSP.close()">Cerrar</button>
+  </div>
+</dialog>
+
+<dialog id="dlgTpl" style="border:1px solid var(--line);border-radius:12px;padding:18px;max-width:640px;width:94%">
+  <h3 style="margin:0 0 4px;color:var(--navy);font-size:14px">Plantilla de condiciones generales</h3>
+  <p style="margin:0 0 10px;font-size:11.5px;color:var(--mut)">Se aplica a todas las cotizaciones nuevas en este equipo. Variables automáticas: <b>{VALIDEZ}</b> días de validez, <b>{MONEDA}</b> moneda de venta, <b>{PAGO}</b> forma de pago.</p>
+  <textarea id="tplText" rows="11" style="font-size:12.5px"></textarea>
+  <div style="display:flex;gap:8px;margin-top:10px">
+    <button class="b-line" onclick="restaurarPlantilla()">Restaurar original</button>
+    <span style="flex:1"></span>
+    <button class="b-line" onclick="dlgTpl.close()">Cancelar</button>
+    <button class="b-cyan" onclick="guardarPlantilla()">Guardar plantilla</button>
+  </div>
+</dialog>
+
+<dialog id="dlgSend" style="border:1px solid var(--line);border-radius:12px;padding:18px;max-width:440px;width:92%">
+  <h3 style="margin:0 0 4px;color:var(--navy);font-size:14px">Enviar cotización</h3>
+  <p style="margin:0 0 12px;font-size:11.5px;color:var(--mut)">Recuerda primero <b>⎙ Guardar PDF</b> y adjuntarlo en el correo o chat.</p>
+  <div style="margin-bottom:10px"><label>Correo del cliente</label><input id="sendMail" placeholder="cliente@empresa.com"></div>
+  <div style="margin-bottom:14px"><label>WhatsApp (con código de país)</label><input id="sendWsp" placeholder="51999999999"></div>
+  <div style="display:flex;gap:8px">
+    <button class="b-cyan" style="flex:1" onclick="enviarCorreo()">✉ Correo</button>
+    <button class="b-cyan" style="flex:1;background:#25D366;color:#fff" onclick="enviarWsp()">🟢 WhatsApp</button>
+    <button class="b-line" onclick="dlgSend.close()">Cerrar</button>
+  </div>
+</dialog>
+
+<dialog id="dlgCons" style="border:1px solid var(--line);border-radius:12px;padding:18px;max-width:560px;width:92%">
+  <h3 style="margin:0 0 4px;color:var(--navy);font-size:14px">Pool de vendedores</h3>
+  <p style="margin:0 0 12px;font-size:11.5px;color:var(--mut)">Los cambios se guardan en este equipo. Para aplicarlos a todo el equipo de ventas, actualizar el archivo COTIZADOR.html compartido.</p>
+  <div id="consRows"></div>
+  <div style="display:flex;gap:8px;margin-top:10px">
+    <button class="b-line" onclick="addConsRow()">＋ Agregar</button>
+    <span style="flex:1"></span>
+    <button class="b-line" onclick="dlgCons.close()">Cancelar</button>
+    <button class="b-cyan" onclick="saveCons()">Guardar</button>
+  </div>
+</dialog>
+
+<dialog id="dlgMay" style="border:1px solid var(--line);border-radius:12px;padding:18px;max-width:480px;width:92%">
+  <h3 style="margin:0 0 4px;color:var(--navy);font-size:14px">Proveedores / Mayoristas</h3>
+  <p style="margin:0 0 12px;font-size:11.5px;color:var(--mut)">Los cambios se guardan en este equipo. Para aplicarlos a todo el equipo de ventas, actualizar el archivo COTIZADOR.html compartido.</p>
+  <div id="mayRows"></div>
+  <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+    <button class="b-line" onclick="addMayRow()">＋ Agregar</button>
+    <button class="b-line" onclick="document.getElementById('fileMay').click()" title="Carga PROVEEDORES.xlsx u otro archivo con una columna 'Proveedor'">⭱ Importar (Excel/CSV)</button>
+    <input type="file" id="fileMay" accept=".xlsx,.xls,.csv" style="display:none" onchange="importarMayoristas(this)">
+    <span style="flex:1"></span>
+    <button class="b-line" onclick="dlgMay.close()">Cancelar</button>
+    <button class="b-cyan" onclick="saveMay()">Guardar</button>
+  </div>
+</dialog>
+
+<!-- ============ DOCUMENTO PDF ============ -->
+<div id="printDoc"></div>
+
+<script>
+/* ================= DATOS ================= */
+const EMPRESA = {
+  nombre:"LACRUZ TECHNOLOGIES GROUP S.A.C.S.", ruc:"20609011549",
+  dir:"Calle German Schreiber 276, San Isidro — Lima",
+  mail:"ventas@lacruzgroup.com", web:"www.lacruzgroup.com"
+};
+let CONSULTORES = [
+  {n:"Jaime La Cruz", t:"+51 962 281 473", m:"jaime.lacruz@lacruzgroup.com"},
+  {n:"Hans Bazan", t:"+51 936 396 354", m:"hans.bazan@lacruzgroup.com"},
+  {n:"Gaby Chinchano", t:"+51 933 314 985", m:"gaby.chinchano@lacruzgroup.com"}
+];
+let MAYORISTAS = ["Deltron","Intcomex","Ingram","Memory Kings","Supertec","Mesajil","Otro"];
+const LOGO_DEF = 'data:image/png;base64,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';
+const COMISION = 0.04, IGV = 0.18;
+let CLIENTES = [{"empresa":"Classic Alpaca S.A.C","distrito":"SJL","direccion":"Conjunto Residencial Hacienda Mangomarca","ruc":"","contacto":"Patricia Rojas","correo":"administracion.lima@classicalpaca.com","telefono":"01-379-0018"},{"empresa":"CORPRISEG","distrito":"SJL","direccion":"Jr. ACORA 1749 Mz F Lt 10","ruc":"20514038601","contacto":"Wilmer Mercado Huamani","correo":"wmercado@corpriseg.com.pe","telefono":"01-717-3175"},{"empresa":"Colegio San Gerardo","distrito":"SJL","direccion":"Templo Aspero","ruc":"","contacto":"","correo":"","telefono":""},{"empresa":"ICC","distrito":"SJL","direccion":"El Santuario 1437","ruc":"20269764211","contacto":"Carlos Samamé","correo":"csamame@iccperu.com","telefono":"01-417-5900"},{"empresa":"Pionner Jeans empresa Moditza","distrito":"SJL","direccion":"","ruc":"","contacto":"Antony Chilquillo","correo":"antonychilquillo@modipsa.com.pe","telefono":"01-459-5152 (212)"},{"empresa":"Sur Color Star (Topitop)","distrito":"SJL","direccion":"Av. El Santuario 1256","ruc":"","contacto":"Daniel Sanchez Jose De La Cruz es el responsable de sistemas","correo":"","telefono":"01-202 0323 (5767) 01-319 3000 (3265)"},{"empresa":"Baby Modas SAC","distrito":"SJL","direccion":"Av. Las Lomas 780","ruc":"","contacto":"","correo":"","telefono":""},{"empresa":"Polibags","distrito":"SJL","direccion":"Av. Lurigancho 1274 - Zarate","ruc":"","contacto":"Ricardo Cordova","correo":"rcordova@polibagsperu.com","telefono":"01-7390602"},{"empresa":"AIDISA","distrito":"SJL","direccion":"","ruc":"","contacto":"","correo":"","telefono":"01-459 5495"},{"empresa":"Lidercon Inspección","distrito":"SJL","direccion":"","ruc":"","contacto":"","correo":"","telefono":"01-2132200 - 968215609"},{"empresa":"Proquinsa","distrito":"SJL","direccion":"Calle Santuario 1239","ruc":"","contacto":"","correo":"","telefono":"01-459 5630"},{"empresa":"FILASUR","distrito":"SJL","direccion":"Av. El Santuario 1119","ruc":"","contacto":"Jesus Coronado","correo":"jacuna@filasur.com","telefono":"01 614 5800"},{"empresa":"ALPAMA","distrito":"SJL","direccion":"Av. El Santuario 1130","ruc":"","contacto":"","correo":"aventas@alpama.com.pe","telefono":"01-376 4466"},{"empresa":"INKA Crops S.A","distrito":"SJL","direccion":"Av. El Santuario 1127","ruc":"","contacto":"Jorge Acuña","correo":"","telefono":"01 614 5820 anexo 416"},{"empresa":"Almacenes AKM","distrito":"SJL","direccion":"Av. El Santuario 1120","ruc":"","contacto":"Alberto Alvarez","correo":"alberto.alvarez@akm.com.pe","telefono":"01 321 5980"},{"empresa":"HORADIN","distrito":"SJL","direccion":"Av. El Santuario 1099","ruc":"20504137563","contacto":"","correo":"","telefono":""},{"empresa":"HIDROSTAL","distrito":"SJL","direccion":"Av. Portada del Sol 722","ruc":"20100171814","contacto":"Michele Calle","correo":"mcalle@hidrostal.com.pe","telefono":"01-319-1000"},{"empresa":"PieriPLAST","distrito":"SJL","direccion":"Jiron Cajamarquilla 1047","ruc":"","contacto":"","correo":"","telefono":"01 779 9030"},{"empresa":"Brimali Industrial oído","distrito":"SJL","direccion":"Calle Coyllur","ruc":"","contacto":"BRIMALI","correo":"administración@brimaliindustrial.com.pe","telefono":"01 376 3079 - 01 363 9254"},{"empresa":"Avila Operador Logistico","distrito":"SJL","direccion":"Av. Juan Medrano Espinoza - Campoy","ruc":"","contacto":"","correo":"informes@avila.pe","telefono":"01 386 2000"},{"empresa":"Grupo Faimex","distrito":"SJL","direccion":"Calle 8 Mz. I Lote 02 Sub. Lote 4B1","ruc":"","contacto":"Nestor Alexander Rodriguez","correo":"informes@grupofaimex.com","telefono":"01 356 9221"},{"empresa":"Cartotek","distrito":"SJL","direccion":"Calle 11 Mza Ll Lote 6 (Campoy)","ruc":"","contacto":"","correo":"cartotek@inter.net.pe","telefono":"01 386-0475"},{"empresa":"Papelera Campoy SAC","distrito":"SJL","direccion":"Av. Principal 820 (Campoy)","ruc":"","contacto":"","correo":"","telefono":"01 386 2052"},{"empresa":"La Sorbona","distrito":"SJL","direccion":"","ruc":"","contacto":"","correo":"","telefono":""},{"empresa":"Candy Market Campoy","distrito":"SJL","direccion":"","ruc":"","contacto":"Favio Tarmeño","correo":"ftarmeno@grupoholp.com.pe","telefono":"01 386 -1527"},{"empresa":"Cartonera Huachipa S.A","distrito":"SJL","direccion":"Av. D N° 418 (media Cuadra del Estadio Huanca)","ruc":"","contacto":"Felix Vasquez","correo":"","telefono":"01 356 8736"},{"empresa":"MUR WY SAC","distrito":"SJL","direccion":"Malecon Checca 3777","ruc":"","contacto":"","correo":"","telefono":"01 700 7282"},{"empresa":"Turbyna","distrito":"SJL","direccion":"Malecon Checca","ruc":"","contacto":"","correo":"","telefono":"01 575 8783"},{"empresa":"MDH PD SAC","distrito":"SJL","direccion":"Malecon Checca 3677","ruc":"","contacto":"","correo":"","telefono":"01 700 7250"},{"empresa":"Papeles Industriales y Comerciales SAC","distrito":"SJL","direccion":"","ruc":"","contacto":"","correo":"","telefono":""},{"empresa":"Easy Corp","distrito":"SJL","direccion":"Malencon Checca (Frente a Candy)","ruc":"","contacto":"","correo":"","telefono":"01 386 1285"},{"empresa":"Textil Coill","distrito":"SJL","direccion":"Av. Malecón Checa 740 (Frente a Candy)","ruc":"","contacto":"","correo":"","telefono":""},{"empresa":"Embutidos TI-CAY S.R.L. (Cerdeña)","distrito":"SJL","direccion":"Candy","ruc":"","contacto":"","correo":"","telefono":"01 386 1527"},{"empresa":"Fibras TOTAL","distrito":"SJL","direccion":"Los Proceres Campoy (frente Testigos de Jehova)","ruc":"","contacto":"","correo":"","telefono":""},{"empresa":"Tecnacorp","distrito":"SJL","direccion":"Calle 7 Mz F Lt. 8","ruc":"","contacto":"","correo":"","telefono":"01 386 2937"},{"empresa":"Global PLastic Trading","distrito":"SJL","direccion":"Av. Primavera Campoy (camino a los evangelistas)","ruc":"","contacto":"","correo":"","telefono":""},{"empresa":"Proesco SAC","distrito":"SJL","direccion":"Campoy del grifo PECSA 2 cuadras","ruc":"","contacto":"","correo":"","telefono":""},{"empresa":"AQD Medic SAC","distrito":"SJL","direccion":"Calle los tordos","ruc":"","contacto":"","correo":"","telefono":""},{"empresa":"RIPSOL","distrito":"SJL","direccion":"Los condores 1013 (urb. nuevo Horizonte)","ruc":"","contacto":"","correo":"","telefono":""},{"empresa":"Flint Group Perú","distrito":"SJL","direccion":"Tusilagos Este 400","ruc":"","contacto":"","correo":"","telefono":""},{"empresa":"Moda Textil Rios","distrito":"SJL","direccion":"Santa Rosa Lima 1130","ruc":"","contacto":"","correo":"","telefono":""},{"empresa":"Melaform SAC","distrito":"SJL","direccion":"Calle 4 Mz E Lt 11 industrial las flores","ruc":"","contacto":"Carlos Chung","correo":"","telefono":"01 459 0026 anexo 216"},{"empresa":"SIAGRO","distrito":"SJL","direccion":"Calle 4 Mz E Lt 5 infustrial las flores","ruc":"","contacto":"Miguel de la Cruz","correo":"miguel@siagrosport.com","telefono":"01 376 5529"},{"empresa":"Ais Hospital Santa Rosa","distrito":"Pueblo Libre","direccion":"Av. Bolivar Nro. S/n (Cuadra Ocho)","ruc":"20171604355","contacto":"Noe Quispe","correo":"nquispe@hsr.gob.pe","telefono":"999 670 270"},{"empresa":"CNPC","distrito":"Miraflores","direccion":"","ruc":"","contacto":"Saúl Ruiz","correo":"saul.ruiz@cnpc.com.pe","telefono":""},{"empresa":"Editorial Santillana","distrito":"Surco","direccion":"","ruc":"","contacto":"Taisia Tupayachi","correo":"ttupayachi@santillana.com","telefono":"952 222 755"},{"empresa":"BIJOU PERU","distrito":"Miraflores","direccion":"Av. Alfredo Benavides 1944 Oficina 403","ruc":"20547530552","contacto":"Helmer Ruiz","correo":"helmer.ruiz@bsg.global","telefono":"+51 970 809 995"},{"empresa":"PRIMA","distrito":"San Isidro","direccion":"Calle Chinchón 980","ruc":"20510398158","contacto":"Luz Yessica Alarcon","correo":"luzalarconv@prima.com.pe","telefono":"961 643 049"},{"empresa":"BLINSEGUR","distrito":"Surco","direccion":"Calle Marqués de Mancera MZ B, lt 07,","ruc":"","contacto":"Christian Arriola","correo":"carriola@blinsegur.com","telefono":"993 875 182"},{"empresa":"PCM (ONGEI)","distrito":"","direccion":"","ruc":"","contacto":"Yarko Arroyo","correo":"yarroyo@pcm.gob.pe","telefono":"996 031 362"},{"empresa":"SERCOMAR","distrito":"","direccion":"","ruc":"","contacto":"Benito Miyahira","correo":"bmiyahira@sercomar.com.pe","telefono":"969076688"},{"empresa":"AVIANCA","distrito":"Miraflores","direccion":"","ruc":"","contacto":"Susana Blas","correo":"susana.blas@avianca.com","telefono":"972 213 121"},{"empresa":"SAM Corp","distrito":"","direccion":"","ruc":"","contacto":"Rafael Castañón","correo":"rcastanon@newport.com.pe","telefono":"994 639 433"},{"empresa":"MAGIA","distrito":"Surquillo","direccion":"Jr. San Agustin 634","ruc":"20538358640","contacto":"Martin Díaz","correo":"martin.diaz@lamagiacuraelcancer.com","telefono":"+51 965 481 175"},{"empresa":"CONDESAN","distrito":"Surquillo","direccion":"Calle Las Codornices 253 Surquillo","ruc":"20523828828","contacto":"Linda Grijalva","correo":"linda.grijalva@condesan.org","telefono":"000 000 000"},{"empresa":"TONFAY","distrito":"Pte. Piedra","direccion":"Av. Buenos Aires Nro. 298 (Cruce con la Av. Juan Lecaros)","ruc":"20553357021","contacto":"Carlos Guerrero","correo":"cguerrero@tonfay.com","telefono":"989 117 593"},{"empresa":"Inversiones Guerra","distrito":"","direccion":"","ruc":"","contacto":"Christian Fernandez","correo":"invguerrasystem@gmail.com","telefono":"997 527 324"},{"empresa":"ATENTO","distrito":"","direccion":"","ruc":"","contacto":"José Martín Flores","correo":"jfloresl@atentoperu.com.pe","telefono":"985 286 581"},{"empresa":"NORDIC","distrito":"La Victoria","direccion":"Patricio Iriarte Nro. 279","ruc":"20503794692","contacto":"Victor Ramos","correo":"infraestructura.ti@nordicperu.com","telefono":"949 133 905"},{"empresa":"CORPAC","distrito":"Callao","direccion":"","ruc":"","contacto":"Edward De la Serna","correo":"soporte@corpac.gob.pe","telefono":"999 529 529"},{"empresa":"CONALVIAS","distrito":"San Isidro","direccion":"Av. Andrés Reyes 437","ruc":"20509586986","contacto":"Christian Leon","correo":"csleon@conalvias.com","telefono":"945 674 105 - 981 139 332"},{"empresa":"Laud & Quijandria","distrito":"Miraflores","direccion":"Av. Alfredo Benavides 1555 (Of. 801)","ruc":"20514853780","contacto":"Milton Maza","correo":"mmaza@lq.com.pe","telefono":"941 420 611 - 949 196 652"},{"empresa":"Real Plaza","distrito":"","direccion":"","ruc":"","contacto":"Enrique Molina","correo":"enrique.molina@realplaza.com.pe","telefono":"963 749 249"},{"empresa":"SERVERX","distrito":"","direccion":"","ruc":"","contacto":"Victor Muchica","correo":"victor.muchica@serverx.com.pe","telefono":"942 085 223"},{"empresa":"VOLVO","distrito":"","direccion":"","ruc":"","contacto":"Williams Quispe","correo":"Williams.quispe@volvo.com","telefono":"997 551 490"},{"empresa":"CAF","distrito":"San Isidro","direccion":"","ruc":"","contacto":"Julio Ramirez","correo":"jramirez@caf.com","telefono":"959 727 480"},{"empresa":"HAVAS GROUP PERÚ","distrito":"San Isidro","direccion":"Av. Juan de Arona Nro. 151 Int. 703","ruc":"20417930079","contacto":"Jorge Samamé","correo":"jorge.samame@havasit.com","telefono":"989 033 987"},{"empresa":"Maria Almanera","distrito":"Miraflores","direccion":"Av. Mariscal La Mar 698","ruc":"20517441792","contacto":"Daniel Saravia","correo":"dsaravia@mariaalmenara.pe","telefono":"995 487 098"},{"empresa":"Nissan Perú SAC","distrito":"San Isidro","direccion":"Av Javier Prado 476-480 Piso 15","ruc":"20602458491","contacto":"Christian Sulluchuco","correo":"christian.sulluchuco@nissan.com","telefono":"993 702 565 - 980 761 273"},{"empresa":"SIDER","distrito":"","direccion":"","ruc":"","contacto":"Daniel Vega","correo":"dvega@sider.com.pe","telefono":"994 603 530"},{"empresa":"PROTISA","distrito":"Sta. Anita","direccion":"","ruc":"","contacto":"Edmundo Tapia","correo":"etapia@protisa.com.pe","telefono":"989 197 807"},{"empresa":"MEDICOS & CIRUJANOS ASOCIADOS SAC","distrito":"Surco","direccion":"Av. El Polo 438","ruc":"20492374301","contacto":"Leyla Yauce","correo":"logistica@clinicacedron.com","telefono":"961 857 868"},{"empresa":"TASA","distrito":"","direccion":"","ruc":"","contacto":"Tobias Sarmiento","correo":"","telefono":""},{"empresa":"RANSA","distrito":"ATE","direccion":"Calle Los Calderos 101","ruc":"20100039207","contacto":"Rolo Flores","correo":"rfloresf@ransa.net","telefono":"942 814 513"},{"empresa":"Norbert Wiener","distrito":"LINCE","direccion":"","ruc":"","contacto":"Renzo Del Castillo","correo":"elcastillo@uwiener.edu.pe","telefono":"994 618 329"},{"empresa":"PROVIAS","distrito":"LIMA","direccion":"Jr. Camaná 678","ruc":"","contacto":"Esmelyn Rojas","correo":"erojas@proviasdes.gob.pe","telefono":"01 524 5300"},{"empresa":"MUNI LIMA","distrito":"Lima","direccion":"","ruc":"","contacto":"Luciano Cabrejo","correo":"","telefono":"990191214"},{"empresa":"PlusPetrol","distrito":"","direccion":"","ruc":"","contacto":"Jose Luis Moscoso","correo":"","telefono":"411 7100"},{"empresa":"Hospital Villa el Salvador","distrito":"","direccion":"","ruc":"","contacto":"","correo":"","telefono":""},{"empresa":"Proanco","distrito":"Sullana Piura","direccion":"Carretera Tambogrande Km 2.1 Mz. C Lt. 5 Zona Industrial Municipal 1","ruc":"","contacto":"Angel Bruno David Ramos","correo":"angel.b@proanco.net david.ramos@proanco.net","telefono":"073 286490 978378210"},{"empresa":"PCM","distrito":"","direccion":"","ruc":"","contacto":"Roland Corasi","correo":"rcorasi@pcm.gob.pe","telefono":"012197000"},{"empresa":"Megaplaza","distrito":"","direccion":"","ruc":"","contacto":"Richard Azañero","correo":"razanero@megaplaza.com.pe","telefono":"955 400 082 016139500 X249"},{"empresa":"Policia Nacional del Perú","distrito":"","direccion":"","ruc":"","contacto":"Celso Vargas","correo":"cvargas@pnp.gob.pe","telefono":"993502113"},{"empresa":"Cepsa","distrito":"","direccion":"","ruc":"","contacto":"Noelia Leiva","correo":"noelia.leiva@cepsa.com","telefono":"012199700 971106542"},{"empresa":"Cerro Verde","distrito":"","direccion":"","ruc":"","contacto":"Alfredo Delgado","correo":"adelgado@fmi.com","telefono":"959924482"},{"empresa":"Petramas","distrito":"Santiago de Surco","direccion":"Av. Tomas Marsano Nro. 2813 Int. 8","ruc":"20297566866","contacto":"Oscar Ramirez","correo":"oscar.ramirez@petramas.com","telefono":"+51 942 467 817"},{"empresa":"Sistemas Falabella","distrito":"","direccion":"","ruc":"","contacto":"Manuel Lengua Eduardo Tirado","correo":"","telefono":""},{"empresa":"Parque del Recuerdo","distrito":"","direccion":"","ruc":"","contacto":"Roldán Pachas","correo":"","telefono":"996486324 X1017"},{"empresa":"Promperu","distrito":"","direccion":"","ruc":"","contacto":"Miguel Calderon","correo":"mcalderon@promperu.gob.pe","telefono":"956895626"},{"empresa":"SIS","distrito":"","direccion":"","ruc":"","contacto":"Luis Guzman","correo":"","telefono":"949478770 X1308"},{"empresa":"Universidad Privada Cayetano Heredia","distrito":"","direccion":"","ruc":"","contacto":"Frank Guzmán","correo":"","telefono":"013190000 X2237"},{"empresa":"Costeño Alimentos SAC","distrito":"Magdalena del Mar","direccion":"Av. Alberto del Campo N° 429","ruc":"20536727524","contacto":"Junior Baldeon","correo":"jbaldeon@costeno.com.pe","telefono":"986 616 129"},{"empresa":"HEADMARK CORPORATION SAC","distrito":"La Victoria","direccion":"Av. Nicolas Arriolla 1393","ruc":"20517206955","contacto":"Elkhart Rojas","correo":"elkhart.rojas@hdmsteel.com","telefono":"936 155 640"},{"empresa":"XIMESA SAC","distrito":"ATE","direccion":"Av. Nicolas Ayllon 2480","ruc":"20125508716","contacto":"Mario Ospinal","correo":"sistemas4@vym.pe","telefono":"943 709 959"},{"empresa":"HARSYS SAC","distrito":"San Juan de Miraflores","direccion":"Mza. G. Lote 20 Coo. Vivienda Uranmarca","ruc":"20515179039","contacto":"Harold Cáceres","correo":"hcaceres@cnsolutions.tech","telefono":"936 514 501"},{"empresa":"OYM BRANDS SAC","distrito":"San Isidro","direccion":"Av. Javier Prado Oeste Nro. 757 Int. 1405","ruc":"20521204622","contacto":"Gustavo Luna","correo":"gluna@oymsurf.com","telefono":"+51 993 471 035"},{"empresa":"IGT PERU SOLUTIONS S.A.","distrito":"Surco","direccion":"Av. el Derby Nro. 254 Int. 606 (Lima Central Tower)","ruc":"20341715483","contacto":"Samuel Perez","correo":"Samuel.Perez@igt.com","telefono":"989 265 142"},{"empresa":"121 RELATIONSHIP MARKETING S.A","distrito":"Miraflores","direccion":"Cal. Gral Federico Recavarren Nro. 542","ruc":"20504021182","contacto":"Doni Altune Vera","correo":"ti@121rm.com","telefono":"975.044.289"},{"empresa":"JRC INGENIERIA Y CONSTRUCCION S.A.C.","distrito":"San Isidro","direccion":"Av. Jorge Basadre Grohmann 233,","ruc":"20508891149","contacto":"Alan Nolasco","correo":"anolasco@jrcing.com.pe","telefono":"+51 914 124 005"},{"empresa":"INSTITUTO NACIONAL DE ENFERMEDADES NEOPLASICAS","distrito":"Surquillo","direccion":"Av. Angamos Este Nro. 2520","ruc":"20514964778","contacto":"Maria Lucinda Ramon","correo":"mramon@inen.sld.pe","telefono":"993 506 500"},{"empresa":"Optical Technologies Sac","distrito":"San Borja","direccion":"Av. Jose Galvez Barrenechea Nro. 645","ruc":"20552504641","contacto":"Fred Ramirez","correo":"framirez@optical.pe","telefono":"993 197 469"},{"empresa":"Necsia S.A.C.","distrito":"Miraflores","direccion":"Av. Enrique Palacios Nro. 420 Int. 203","ruc":"20601858615","contacto":"Crisbell Márquez","correo":"c.marquez@necsia.pe","telefono":"924 089 581"},{"empresa":"Inversiones Numera SAC","distrito":"ATE","direccion":"Av. Alexander Fleming # 201","ruc":"20510220847","contacto":"Mario Ospinal","correo":"mario.ospinal@vym.pe","telefono":"943 709 959"},{"empresa":"Empresa de Transporte DECAPOLIS SAC","distrito":"ATE","direccion":"Av. Santa Rosa Nro. 161 Z.I. Santa Angelica","ruc":"20514400645","contacto":"Mario Ospinal","correo":"sistemas4@vym.pe","telefono":"943 709 959"},{"empresa":"Mecanicos del Plásticos SAC","distrito":"ATE","direccion":"Av. Alexander Fleming Nro. 253","ruc":"20515302761","contacto":"Mario Ospinal","correo":"sistemas4@vym.pe","telefono":"943 709 959"},{"empresa":"METALCROX Corporación Metal Mecánica S.A.C","distrito":"La Victoria","direccion":"Av. San Luis Nro. 485","ruc":"20600028473","contacto":"Mario Ospinal","correo":"sistemas4@vym.pe","telefono":"943 709 959"},{"empresa":"ReyExport Internacional S.A.C.","distrito":"ATE","direccion":"Av. Nicolas Ayllon Nro. 2480","ruc":"20518243773","contacto":"Mario Ospinal","correo":"sistemas4@vym.pe","telefono":"943 709 959"},{"empresa":"Servicios de Moldes Plásticos S.A.C.","distrito":"La Victoria","direccion":"Av. San Luis Nro. 525","ruc":"20302012645","contacto":"Mario Ospinal","correo":"sistemas4@vym.pe","telefono":"943 709 959"},{"empresa":"V&M Managment Consulting S.A.C","distrito":"ATE","direccion":"Av. Nicolas Ayllon Nro. 2480","ruc":"20524263913","contacto":"Mario Ospinal","correo":"sistemas4@vym.pe","telefono":"943 709 959"},{"empresa":"IT SERVICE S.A.C.","distrito":"Miraflores","direccion":"Cal. Coronel Inclan Nro. 914 (Esq.Calle Maria Parado de Bellido 196)","ruc":"20506266875","contacto":"Miguel Camacho","correo":"miguel.camacho@itservice.com.pe","telefono":"989 153 073"},{"empresa":"J.S. INDUSTRIAL S.A.C","distrito":"Surco","direccion":"Av. las Nazarenas Nro. 671","ruc":"20111864595","contacto":"","correo":"","telefono":""},{"empresa":"PROCAPITALES","distrito":"San Isidro","direccion":"Av. Del Parque Nte. 480","ruc":"20502587189","contacto":"Gerardo Gonzales","correo":"ggonzales@procapitales.org","telefono":"(01) 440 1080"},{"empresa":"GLOBAL NETWORK SOLUTION","distrito":"San Borja","direccion":"Cal. Rubens Nro. 234 Int. 301 (Antes 334)","ruc":"20517877736","contacto":"Karina Cordoba","correo":"karina.cordova@gns.com.pe","telefono":"998 384 650"},{"empresa":"SISCARD PERU SAC","distrito":"La Victoria","direccion":"Av. Aviacion Nro. 1564","ruc":"20545313112","contacto":"Henry Valentín","correo":"Henry.valentin@siscardperu.pe","telefono":"964 192 196"},{"empresa":"FEBAN","distrito":"Cercado","direccion":"Av. Javier Prado Este 2499","ruc":"20122794424","contacto":"Luis Vallejo","correo":"lvallejos@feban.net","telefono":"+51 995 992 646"},{"empresa":"HERMES TRANSPORTES BLINDADOS S A","distrito":"Chorrillos","direccion":"Av. Produccion Nacional Nro. 278","ruc":"20100077044","contacto":"Henry Quiroz","correo":"henry,quiroz@hermes.com.pe","telefono":"(01) 617 4000 (1356)"},{"empresa":"SCOTIABANK PERU SAA","distrito":"San Isidro","direccion":"Av. Canaval y Moreyra Nro. 522","ruc":"20100043140","contacto":"Mariela Cisneros","correo":"mariela.cisneros@scotiabank.com","telefono":"997 810 707"},{"empresa":"AJINOMOTO DEL PERU S A","distrito":"La Victoria","direccion":"Av. Rep de Panama Nro. 2455","ruc":"20100085063","contacto":"Gerardo Gavidia","correo":"gerardo_gavidia@lim.ajinomoto.com","telefono":""},{"empresa":"IAFIS Group","distrito":"","direccion":"","ruc":"20544804741","contacto":"Eric Jimenez","correo":"eric.jimenez@iafisgroup.com","telefono":"943 968 170"},{"empresa":"CEO SANTO DOMINGO SAVIO","distrito":"Rimac","direccion":"Jr. Madera Nro. 401 (al Lado del Paseo de Aguas)","ruc":"20503890811","contacto":"Judith Figueroa","correo":"judithfigueroa@outlook.com","telefono":"988 467 968"},{"empresa":"NetSer","distrito":"Florida","direccion":"5850 Coral Ridge Drive, #210","ruc":"","contacto":"Alexandra Angulo","correo":"aangulo@netsergroup.us","telefono":"+506 8458 1998"},{"empresa":"Newport Capital","distrito":"San Isidro","direccion":"Av. Republica de Panama Nro. 3030","ruc":"20513020792","contacto":"Tobias Quiñones","correo":"tquinones@newport.com.pe","telefono":"+51 982 287 971"},{"empresa":"INVERSIONES 364 E.I.R.L.","distrito":"San Borja","direccion":"Av. las Artes Norte Nro. 364","ruc":"20522855180","contacto":"Liliana Guerrero","correo":"liligv7@hotmail.com","telefono":"+51 994 617 049"},{"empresa":"EMPRESA DE TRANSPORTES LOS ASES DEL MARAÑON S.R.L.","distrito":"Villa del Salvador","direccion":"Pachacamac 4ta Etapa","ruc":"20546618511","contacto":"Wilson","correo":"","telefono":"+51 950 096 116"},{"empresa":"IDENTIBIO S.A.C","distrito":"San Isidro","direccion":"Cal. la Habana Nro. 192 (7mo Piso)","ruc":"20544804741","contacto":"Angel Ñontol","correo":"angel.nontol@iafisgroup.com","telefono":"+51 970 970 968"},{"empresa":"Urban Solutions J&H SAC","distrito":"La Molina","direccion":"Av. Fontana 1020","ruc":"20603741448","contacto":"Carlos Naupari","correo":"urbansolutions.jh@gmail.com","telefono":"+51 951 377 310"},{"empresa":"Secretaría Técnica de Apoyo a la Comisión Ad Hoc Creada por la Ley 29625","distrito":"Cercado de Lima","direccion":"Jr. Cuzco Nro. 177 (Piso 8)","ruc":"20547199066","contacto":"David Rivas Jimenez","correo":"drivasj@mef.gob.pe","telefono":""},{"empresa":"Presidencia del Consejo de Ministros","distrito":"Cercado de Lima","direccion":"Jr. Carabaya Cuadra 1","ruc":"20168999926","contacto":"","correo":"","telefono":""},{"empresa":"Peruvian Inmobiliari SAC","distrito":"San Borja","direccion":"Av. Boulevard Nro. 594 Int. 202 (Frente al Pentagonito)","ruc":"20512518738","contacto":"Marco Díaz Costa","correo":"","telefono":"+51 940 480 752"},{"empresa":"Osher Perú SAC","distrito":"Santiago de Surco","direccion":"Monterrey Nro. 341 Dpto. 601","ruc":"20606000597","contacto":"Geovannie Bermudez","correo":"gpandora@pe-luxurydist.com","telefono":"+51 941 487 693"},{"empresa":"TRBA SAC","distrito":"ATE","direccion":"Av. Nicolas Ayllón 2480","ruc":"20607334901","contacto":"Mario Ospinal","correo":"mario.ospinal@trba.pe","telefono":"943 709 959"},{"empresa":"Coorporacion Roots","distrito":"San Isidro","direccion":"Av. Arequipa 3510","ruc":"20392064550","contacto":"Luis Sialer","correo":"lsialer@rootsperu.com","telefono":"+51 989 119 519"},{"empresa":"OSITRAN","distrito":"Surquillo","direccion":"Cal. los Negocios - Piso 2 Nro. 182","ruc":"20420248645","contacto":"Everth Gomez","correo":"egomez@ositran.gob.pe","telefono":"+51 932 977 105"},{"empresa":"Esteticalm","distrito":"San Borja","direccion":"Av.Prolongacion Primavera Nro. 853","ruc":"20509927481","contacto":"Angelica Lopez","correo":"angelica@clinicabarrenechea.pe","telefono":"+51 940 297 571"},{"empresa":"LQA - Consultoría y Proyectos Ambientales","distrito":"Miraflores","direccion":"Av. Benavides 1555. (Ofc. 801)","ruc":"20566108632","contacto":"Milton Maza","correo":"mmaza@lqg.com.pe","telefono":"+51 941 420 611"},{"empresa":"Expeditors","distrito":"San Isidro","direccion":"Av. Javier Prado Este Nro. 444 Int. 502","ruc":"20511501718","contacto":"Omar Moreno","correo":"omar.moreno@expeditors.com","telefono":"+51 984 254 594"},{"empresa":"Miatech International SAC","distrito":"San Isidro","direccion":"Av. Republica de Panama Nro. 3030 Int.A","ruc":"20470033186","contacto":"Juan Bravo","correo":"jbravo@miatech.net","telefono":"+51 939 673 495"},{"empresa":"COMERCIAL RAMIREZ E.I.R.L.","distrito":"Bellavista","direccion":"Jr. Bolognesi Nro. 652 (Primer Piso Bellavista)","ruc":"20404440170","contacto":"Alberto Cieza","correo":"","telefono":"+51 978 492 962"},{"empresa":"Colegio San Luis - Hermanos Maristas","distrito":"Barranco","direccion":"Nicolas de Pierola 187","ruc":"20108979985","contacto":"Eduardo Larico","correo":"elaricor@sanluis.edu.pe","telefono":"+51 997 971 717"},{"empresa":"Colegio Nuestra Señora de la Reconcilización","distrito":"Santiago de Surco","direccion":"Av. Manuel Olguin Nro. S/n","ruc":"20387535684","contacto":"Eduardo Larico","correo":"elarico@colegionsr.edu.pe","telefono":"+51 997 971 717"},{"empresa":"Tec Investment Solutions SAC","distrito":"Santiago de Surco","direccion":"Jr. Los Conquistadores 254","ruc":"20607438367","contacto":"Carlos Leyva Larrea","correo":"carlosleyva.trader1@gmail.com","telefono":"+51 912 105 555"},{"empresa":"ARA EXPORT S.A.C.","distrito":"SMP","direccion":"Mza. R Lote. 38 Asc.Viv.Rosario del N","ruc":"20551771556","contacto":"Luis Sialer","correo":"lsialer@araexportsac.com","telefono":"+51 941 155 426"},{"empresa":"COMSATEL PERU SAC","distrito":"Magdalena del Mar","direccion":"Calle Diego Gailan 165","ruc":"20330096749","contacto":"Harold Cáceres","correo":"hcaceres@comsatel.com.pe","telefono":"+51 936 514 501"},{"empresa":"Instituto Ciencias y Humanidades","distrito":"Santa Beatriz","direccion":"Av. Republica de Chile Nro. 295 Int. 503","ruc":"20125753869","contacto":"Julio Gonzales","correo":"logisticapreves@ich.edu.pe","telefono":"+51 989 300 320"},{"empresa":"BONANZZA STORES S.A.C.","distrito":"Ate","direccion":"Av. los Sauces Nro. 154","ruc":"20549810072","contacto":"Julio Tarazona","correo":"tarazona@calimod.com.pe","telefono":"+51 964 653 901"},{"empresa":"JUAN LENG DELGADO S.A.C.","distrito":"Ate","direccion":"Av. Santa Maria Nro. 145","ruc":"20100282721","contacto":"Julio Tarazona","correo":"tarazona@calimod.com.pe","telefono":"+51 964 653 901"},{"empresa":"INMOBILIARIA & CONSTRUCTORA VIVALDI SAC","distrito":"Lima","direccion":"Jiron Jerónimo de Aliaga 241, Lima 15023, Peru","ruc":"20604145458","contacto":"Solenka Alvarado","correo":"inmobiliariavivaldi.adm@gmail.com","telefono":"+51 955 324 554"},{"empresa":"VALOREM EMPRESARIAL S.A.C.","distrito":"Lima","direccion":"Jr. Huanuco Nro. 3154","ruc":"20604944288","contacto":"Milton Maza","correo":"","telefono":"+51 941 420 611"},{"empresa":"Industrias Windsor SAC","distrito":"ATE","direccion":"Av. los Sauces Nro. 154","ruc":"20122895883","contacto":"Julio Tarazona","correo":"tarazona@calimod.com.pe","telefono":"+51 964 653 901"},{"empresa":"ByV IESEMIN SAC","distrito":"Los Olivos","direccion":"Jr. Saturno 102","ruc":"20513192224","contacto":"Mario Ospinal","correo":"sistemas@byv.com.pe","telefono":"+51 926 926 894"},{"empresa":"Soluciones Perfectas Administrativas S.A.C.","distrito":"San Borja","direccion":"Av.Prolongacion Primavera Nro. 853","ruc":"20602837620","contacto":"Angélica López","correo":"angelica@clinicabarrenechea.pe","telefono":"+51 940 297 571"},{"empresa":"British American Tobacco del Perú","distrito":"Santiago de Surco","direccion":"Av. El Derby N° 055, Torre 3 Oficinas 405-406-407-408","ruc":"20261180937","contacto":"","correo":"","telefono":""},{"empresa":"Merck Peruana","distrito":"Santiago de Surco","direccion":"Av. Manuel Olguin Nro. 325","ruc":"20100099447","contacto":"Hector Fernandez","correo":"hector.fernandez@merckgroup.com","telefono":"+51 01 437 2955"},{"empresa":"ITICSA","distrito":"Cercado Lima","direccion":"Av. Industrial Nro. 765 Z.I. Lima (Altura Cdra 25 Av. Argentina)","ruc":"20100265479","contacto":"Mario Ospinal","correo":"mario.ospinal@insecorp.pe","telefono":"+51 992 689 664"},{"empresa":"Expeditors Aduana","distrito":"Callao","direccion":"Av. Elmer Faucett Nro 2851 Int 212","ruc":"2054907225","contacto":"Percy Feliz","correo":"percy.feliz@expeditors.com","telefono":"+51 983 402 819"},{"empresa":"AFINED","distrito":"BREÑA","direccion":"Av. Alfonso Ugarte 1426","ruc":"20512286349","contacto":"Alberto Chuica","correo":"sistemas@elumbreras.com.pe","telefono":"+51 986 648 588"},{"empresa":"LAUB & QUIJANDRIA-CONSULTORES Y ABOGADOS S.C.R.L","distrito":"Miraflores","direccion":"Av. Alfredo Benavides 1555 (Of. 401)","ruc":"20514853780","contacto":"Milton Maza","correo":"mmaza@lqg.com.pe","telefono":"+51 941 420 611"},{"empresa":"ATHLETIC DEPOR SOCIEDAD ANOMINA CERRADA","distrito":"La Victoria","direccion":"Av. Paseo de la Republica Nro. 395 Int. 2ps","ruc":"20600302630","contacto":"Sergio Falcon","correo":"","telefono":"+51 947 743 746"},{"empresa":"PETROLEOS DE AMERICA S.A.","distrito":"Miraflores","direccion":"AV. 28 de Julio Nro 554","ruc":"20332711157","contacto":"Edwin Quispe","correo":"soporte.tecnico@petroamerica.com.pe","telefono":"+51 939 464 209"},{"empresa":"LQP - Predial y Social SAC","distrito":"Miraflores","direccion":"Av. Alfredo Benavides 1555 (Of. 401)","ruc":"20514853780","contacto":"Milton Maza","correo":"mmaza@lqg.com.pe","telefono":"+51 941 420 611"},{"empresa":"RIOS & HNOS SAC","distrito":"Villa El Salvador","direccion":"Mza. M Lote. 7c Z.I. Prq Ind del Cono Sur","ruc":"20108129841","contacto":"Juan Quispe","correo":"juanquispe@miguelito.com.pe","telefono":"+51 996 595 815"},{"empresa":"AURUS CONSTRUCTORA E INMOBILIARIA S.A.C.","distrito":"La Molina","direccion":"Av. La Fontana 892","ruc":"20605873627","contacto":"Cristhian Huaman","correo":"chuaman@aurus.com.pe","telefono":"+51 926 580 500"},{"empresa":"Construcción y Administración S.A","distrito":"Santiago de Surco","direccion":"Av. Javier Prado Este Nro. 4109","ruc":"201095655017","contacto":"Christian Leon","correo":"cleon@casacontratistas.com","telefono":"+51 942 775 697"},{"empresa":"Inmobiliaria Huertas Grupo Inv. S.R.L.","distrito":"La Victoria","direccion":"Cal. Luis Espejo Nro. 1097 Int. 802","ruc":"20601000939","contacto":"Walter Nicolas Gerónimo","correo":"Wnicolas@inmobiliariahuertas.com","telefono":"+51 944 804 884"},{"empresa":"ARA FOODS INDUSTRY S.A.C.","distrito":"Jesus María","direccion":"C. Heredia Nro 641","ruc":"20610089136","contacto":"Luis Sialer","correo":"lsialer@araexportsac.com","telefono":"+51 941 155 426"},{"empresa":"COMSEG PERU SAC","distrito":"Santiago de Surco","direccion":"Av. San Juan Mz C1 Lt 10. Urb Mateo Pumacahua","ruc":"20544777247","contacto":"Jorge Alata","correo":"jalata@comseg.com.pe","telefono":"+51 991 899 918"},{"empresa":"Overtech","distrito":"Magdalena del Mar","direccion":"Av. Sucre Nro 880 Dtpo 406 Urb. Orbea","ruc":"20608947249","contacto":"Aldo Lizarraga","correo":"a.lizarraga@overtech-solutions.com","telefono":"+51 936 258 555"},{"empresa":"Grupo Almar","distrito":"Lince","direccion":"Av. Arequipa 2450","ruc":"20608777254","contacto":"Esteban Changa","correo":"e.changa@infinity.es","telefono":"+51 956 019 870"},{"empresa":"Fiorella Representaciones S.A.C","distrito":"Callao","direccion":"Cal. Omicron Nro. 215 Z.I. Pq.Int.Indust. y Comercio","ruc":"20101256422","contacto":"Gabriel Moran","correo":"","telefono":"+51 929 566 697"},{"empresa":"Comercial Alimenticia SAC","distrito":"San Isidro","direccion":"Calle Miguel Dasso Nro. 153","ruc":"20101088295","contacto":"Jose Luis Falcon","correo":"auxiliardesistemas@golosintastrome.com","telefono":"+51 950 491 670"},{"empresa":"Artecola Peru SA","distrito":"ATE","direccion":"Av. Santa Rosa Nro. 410","ruc":"20100302421","contacto":"Sergio Aguirre","correo":"sergio.aguirre@artecola.com.pe","telefono":"+51 977 550 743"},{"empresa":"Ola y Montaña SAC","distrito":"Magdalena del Mar","direccion":"Av. Javier Prado Oeste Nro. 757 Int. 1405","ruc":"20520673670","contacto":"Luis David Soto","correo":"lsoto@oymsurf.com","telefono":"+51 984 723 722"},{"empresa":"Inca Rail S.A","distrito":"Surco","direccion":"Derby No. 055 Edificio Cronos Piso 6","ruc":"20515164945","contacto":"Luis Estrada","correo":"soporte_lima@incarail.com","telefono":"+51 987 411 340"},{"empresa":"Asociación Crisitiana de Jovenes del Perú","distrito":"Pueblo Libre","direccion":"Av. Bolivar N° 635","ruc":"20100892716","contacto":"Julio Sandoval","correo":"soporte@ymcaperu.org","telefono":"+51 970 058 405"},{"empresa":"BSH ELECTRODOMESTICOS SAC","distrito":"Callao","direccion":"Av. Elmer Faucett Nro 3551","ruc":"20330444372","contacto":"Miguel Casaverde","correo":"miguel.casaverde@bshg.com","telefono":"+51 998 193 568"},{"empresa":"Corporación Carranza Gutierrez SAC","distrito":"Nuevo Chinbote","direccion":"Cal. 5 Nro. 56-9 Urb. Nicolas Garatea","ruc":"20602973868","contacto":"Luis Sialer","correo":"luisarmey@gmail.com","telefono":"+51 941 155 426"},{"empresa":"PROINVERSION: Agencia de Promocion de la Inversión Privada","distrito":"San Isidro","direccion":"Av. Enrique Canaval Moreyra 150","ruc":"20280799643","contacto":"Juan Raul Agüero Córdova","correo":"consultor_28@proinversion.gob.pe","telefono":"+51 933 848 479"},{"empresa":"Triathlon SAC","distrito":"San Isidro","direccion":"Av. General Salaverry Nro. 2387","ruc":"20417531026","contacto":"Oscar Córdoba","correo":"ocordova@triathlon-sport.com","telefono":"+51 942 770 730"},{"empresa":"Global Perlas CAR SAC","distrito":"ATE","direccion":"La Arboleda 115","ruc":"20546153372","contacto":"Kevin Arevalo","correo":"soporte@gpc.pe","telefono":"+51 983 513 057"},{"empresa":"Hospital Nacional Docente MYM San Bartolome","distrito":"Cercado de Lima","direccion":"Av. Alfonso Ugarte 825","ruc":"20137729751","contacto":"Christian Dominguez","correo":"","telefono":"+51 952 394 082"},{"empresa":"I.E.P. Parroquial Junior Cesar de los Rios","distrito":"CALLAO","direccion":"Av. Octavio Espinoza Nro. S/n U.V. Santa Marina","ruc":"20140933032","contacto":"Eduardo Larico","correo":"elaricor@gmail.com","telefono":"+51 997 971 717"},{"empresa":"Industrias Termos SA","distrito":"Chorrillos","direccion":"Jr. Comunidad Industrial Nro 298a Urb. La Villa","ruc":"20100288410","contacto":"Richard Calles","correo":"calles.richar@grupotermos.com","telefono":"+51 961 425 942"},{"empresa":"Global Billion SAC","distrito":"Santiago de Surco","direccion":"Jr. Alonso de la Molina 1429 Urb. El Sausalito","ruc":"20607251631","contacto":"Gianella Maldonado","correo":"","telefono":""},{"empresa":"Malvex del Perú","distrito":"La Victoria","direccion":"Av. Javier Prado Este 1169","ruc":"20100776562","contacto":"Edwin Velasquez","correo":"evalasquez@malvez.pe","telefono":"+51 965 394 702"},{"empresa":"Callirgos Consultores SAC","distrito":"San Miguel","direccion":"Jiron Intisuyo 324","ruc":"20607118257","contacto":"Christian Callirgos Zavalaga","correo":"ccallirgos@callirgosconsultores.pe","telefono":"+51 967 767 409"},{"empresa":"Atomo Consulting SAC","distrito":"Santiago de Surco","direccion":"Jr. Batallón Libres de Trujillo Nro. 136. Urb Santa Teresa","ruc":"20609618427","contacto":"Titto Almora","correo":"talmora@atomo.com.pe","telefono":"+51 997 568 002"},{"empresa":"Transfar Supplies Computer SA","distrito":"San Borja","direccion":"Av. Del Parque norte 1126","ruc":"20101782744","contacto":"Alonso Nuñez","correo":"anunez@transfarcorp.com","telefono":"+51 997 542 516"},{"empresa":"Odoshop Perú SAC","distrito":"Surquillo","direccion":"Calle Las Gaviotas Nro 122 int 301","ruc":"20603593775","contacto":"Mario Amoros","correo":"mario.amoros@admosfera.pe","telefono":"+51 999 997 295"},{"empresa":"Agencia de Marketing Sensorial SAC","distrito":"Lince","direccion":"Calle Sinchi Rocca 2630","ruc":"20600419171","contacto":"Carlos Amoros","correo":"carlos@admosfera.pe","telefono":"+51 999 997 426"},{"empresa":"A","distrito":"","direccion":"","ruc":"","contacto":"","correo":"","telefono":""},{"empresa":"CCLL Servicios Generales SAC","distrito":"Santiago de Surco","direccion":"Jiron Cerro Prieto 316","ruc":"20602707688","contacto":"Edmundo Caillauxs","correo":"ecaillauxs@ccll.pe","telefono":"+51 998 225 312"},{"empresa":"Manuel Reyes Gutierrez","distrito":"Los Olivos","direccion":"Jr. César Vallejo 1166 Urb Covida Los Olivos","ruc":"10101962097","contacto":"Manuel Reyes","correo":"oficinatecnica@innteco.com.pe","telefono":"+51 998 146 078"},{"empresa":"Corporación Daruchi SAC","distrito":"Miraflores","direccion":"Calle Atahualpa Nro 553","ruc":"20515314424","contacto":"Janeth Grandez","correo":"jgrandez@daruchi.com","telefono":"+51 991 163 058"},{"empresa":"REM CONSULTING SYSTEMS SERVICES S.A.C","distrito":"San Martin de Porres","direccion":"Jirón Ernesto Mora Nro 475 Urb. Ingenieria","ruc":"20601796881","contacto":"Adrían Alcantara","correo":"","telefono":"+51 946 889 806"},{"empresa":"PROFONANPE","distrito":"Magdalena del Mar","direccion":"Parque Gonzales Prada 396 Nro","ruc":"20261430470","contacto":"Mirella Oré","correo":"more@profonanpe.org.pe","telefono":""},{"empresa":"JS ELECTRIC CONECTION SAC","distrito":"VMT","direccion":"Calle San Pedro 664 P.J Primer Hogar Policial Zona 1 Piso 1","ruc":"20601137586","contacto":"Jose Escobedo","correo":"jescobedo@jselectricconection.com","telefono":"+51 944 447 931"},{"empresa":"Golden City SAC","distrito":"VMT","direccion":"JR. JOSE OLAYA NRO. 740 / LIMA - LIMA - VILLA MARIA DEL TRIUNFO","ruc":"20563720591","contacto":"Carlos Guerrero","correo":"cguerrero@tonfay.com","telefono":"+51 936 587 851"},{"empresa":"EBSCORP SAC","distrito":"SJL","direccion":"Av. Proceres de la Independen Nro. 2836","ruc":"20478089440","contacto":"Brack Hernandez","correo":"projectmanager@corp-ebs.com","telefono":"+51 954 944 200"},{"empresa":"Noovus Technology Business Unit SAC","distrito":"Santiago de Surco","direccion":"Jirón Monterrey Nro 405, Int 403","ruc":"20602916139","contacto":"Vicmar Jiménez Canal","correo":"vjimenez@noovus.tech","telefono":"+51 923 353 098"},{"empresa":"INGETEC","distrito":"Magdalena del Mar","direccion":"Jr. Trujillo 414","ruc":"","contacto":"José Bullón","correo":"","telefono":""},{"empresa":"PROCESS & TECHNOLOGIC SOLUTIONS GROUP S.A.C. - PROTECSOL S.A.C.","distrito":"Pueblo Libre","direccion":"Jirón Zaragoza 431, Pueblo Libre 15084","ruc":"20600222385","contacto":"Victor Rivera","correo":"gerencia@protecsolgroup.com","telefono":"+51"},{"empresa":"MARFREEZE SAC","distrito":"La Molina","direccion":"Jr. Industriales Nro. 587 Int. Pso1 (Alt Cdra 4 de Constructores)","ruc":"20602721231","contacto":"David Chambilla","correo":"Sistemas@marfreezeperu.com","telefono":"+51 950 176 706"},{"empresa":"ACTION BRANDS SAC","distrito":"Miraflores","direccion":"Av. Roosevelt 5975","ruc":"20612248908","contacto":"Rodrigo La Noire","correo":"","telefono":"+51 966 763 407"},{"empresa":"Memphis Maquinarias SAC","distrito":"Santiago de Surco","direccion":"Av. Circunvalación el Golf los incas # 158 Dpto. 203","ruc":"20603847424","contacto":"Henry Valentín","correo":"","telefono":"+51 964 192 196"},{"empresa":"Andina Technology Partners PERU S.R.L","distrito":"San Isidro","direccion":"Av. Victor Andres Belaunde N°147 Of. 701 Via Principal N°103","ruc":"20548347301","contacto":"Samir Ochoa","correo":"samir.ochoa@atpsites.com","telefono":"+51 996 001 289"},{"empresa":"YUPAYCHAY SAC","distrito":"Pueblo Libre","direccion":"Parque de la Puente y Cortez #132","ruc":"20522632121","contacto":"Boris Soplin","correo":"","telefono":"+51 989 175 920"},{"empresa":"Softmark Group SAC","distrito":"Miraflores","direccion":"Alfredo Benavides 1944 Int 1002","ruc":"20538335780","contacto":"Diana Belli","correo":"dbelli@softmarkperu.com","telefono":"+51 944 212 893"},{"empresa":"Computer & Tecnology SAC","distrito":"Lince","direccion":"General Córdova Nro 2214 Dpto 202","ruc":"20601186676","contacto":"Julian Ñahui","correo":"","telefono":"+51 987 571 509"},{"empresa":"ISSAPERU SAC","distrito":"San Isidro","direccion":"Av. Ricardo Rivera Navarrete #495","ruc":"20550510384","contacto":"Luis Villegas","correo":"Luis.villegas@issaperu.com.pe","telefono":"+51 955 297 444"},{"empresa":"IGH PERU SA","distrito":"Santiago de Surco","direccion":"Avenida La Encalada 1257","ruc":"20598932621","contacto":"Joel Huamán","correo":"","telefono":"+51 972 204 090"},{"empresa":"i-RUN Sport SAC","distrito":"Cercado de Lima","direccion":"Jirón Ayacucho 1190","ruc":"20562829041","contacto":"Maicol Gonzales","correo":"soporte@irun.pe","telefono":""},{"empresa":"POLCEM S.A.C","distrito":"La Molina","direccion":"Av. la Molina Nro. 648 Dpto. 304","ruc":"20546412904","contacto":"Cesar Jimenez","correo":"cjimenez@polcem.pe","telefono":"+51 919 634 091"},{"empresa":"SILBRA CONSULTORES S.A.C","distrito":"San Isidro","direccion":"CAL. LAS PALMERAS NRO. 203 DPTO. 301 URB. ORRANTIA","ruc":"20600923405","contacto":"Victor Silva","correo":"vsilva@luma.com.pe","telefono":"+51 994 449 105"},{"empresa":"EOL PERU E.I.R.L","distrito":"El Agustino","direccion":"Av. Nicolas Ayllon 2941 (Piso 5 Oficina 11)","ruc":"20600868455","contacto":"Manuel Plasencia","correo":"mplasencia@eol.com.pe","telefono":"+51 922 658 214"},{"empresa":"LA CASA DE LAS CARCASAS PERU S.A.C.","distrito":"MIRAFLORES","direccion":"AV. RICARDO PALMA NRO 311 INT 304","ruc":"20613901435","contacto":"Alfredo Gaete","correo":"alfredogaete@lacasadelascarcasas.cl","telefono":"+56 997 373 634"},{"empresa":"Droguería Laboratorio Hermani","distrito":"MIRAFLORES","direccion":"Av. Emilio Cavenecia 151, INT 604","ruc":"20510444109","contacto":"Heriberto Hidalgo","correo":"heriberto.hidalgo@hermani.pe","telefono":"+51 986 635 310"},{"empresa":"CLUB TENNIS LAS TERRAZAS MIRAFLORES","distrito":"MIRAFLORES","direccion":"MALECON 28 DE JULIO NRO 390","ruc":"20162842031","contacto":"Johan Huamán","correo":"jhuaman@clubterrazas.com.pe","telefono":"+51 942 979 347"},{"empresa":"Walon Sport","distrito":"Cercado de Lima","direccion":"Av. Abancay Nro. 368 Int. 2001","ruc":"20297809785","contacto":"Sergio Falcon","correo":"Sfalcon@walon.com.pe","telefono":"+51 947 743 746"},{"empresa":"YMB Industrias E.I.R.L","distrito":"SJL","direccion":"Av. Cajamarquilla N° 1085","ruc":"20522907911","contacto":"David Chambilla","correo":"david.chambilla@ymb.com.pe","telefono":"+51 950 176 706"},{"empresa":"PROJECT LINK S.A.C","distrito":"LA MOLINA","direccion":"Cal. Linares Nro. 250","ruc":"20612783773","contacto":"Gabriel Deza","correo":"gabriel.deza@project-links.com","telefono":"+51 959 185 654"},{"empresa":"CHERY OMODA&JAECCO SUCURSAL DEL PERU","distrito":"SAN ISIDRO","direccion":"AV. REPUBLICA DE PANAMA NRO. 3533 INT. 403 URB. EL PALOMAR","ruc":"20614971356","contacto":"Sergio Chuquiyauri","correo":"sergio.chuquiyauri@omodaglobal.com","telefono":"+51 970 812 079"},{"empresa":"YACHAY TELECOMUNICACIONES S.A.C.","distrito":"MIRAFLORES","direccion":"Av. la Paz Nro. 1049 Int. 202,","ruc":"20515381024","contacto":"Martin Egusquiza","correo":"jegusquiza@yachay.pe","telefono":"+51 987 244 089"},{"empresa":"ATIX","distrito":"Pte. Piedra","direccion":"Mza. a Lote. 5 Fnd. San Manuel (Alt de Escuela de Policia)","ruc":"20521257076","contacto":"Magno De La Cruz","correo":"","telefono":"+51 956 035 180"},{"empresa":"DONATYO & SUPPLIES S.A.C","distrito":"Sta. Anita","direccion":"CAL. 29 MZ. M LT. 30 URB. LA ENCALADA","ruc":"20614120399","contacto":"Violeta Barja","correo":"violeta.barj@donatyo.com.pe","telefono":"+51 996 549 670"},{"empresa":"URBANITY GROUP SAC","distrito":"Santiago de Surco","direccion":"AV. Manuel Olguin Nro. 211 Int. 304","ruc":"20601800986","contacto":"Jocelyn Barreda","correo":"urbanityadmin@gmail.com","telefono":"+51 997 759 872"},{"empresa":"SOC. MUTUAL. MILITAR POLICIAL DEL PERU","distrito":"Lince","direccion":"Jr. Pezet y Monel Nro. 2458","ruc":"20253401673","contacto":"Alcibiades Cordova","correo":"Acordova@smmpp.org.pe","telefono":"+51 999 175 631"}];
+
+const GAR_DEF = '1. Garantía: 12 meses contra defectos de fabricación, otorgada por el fabricante o su representante autorizado en el Perú, salvo indicación distinta en el ítem. Se gestiona vía RMA presentando factura y número de serie.\n2. Equipo DOA (falla al primer encendido): cambio directo dentro de los primeros 7 días calendario, previa verificación técnica, con empaque y accesorios completos.\n3. La garantía no cubre: daños por mal uso, golpes, humedad, variaciones de voltaje, instalación eléctrica sin puesta a tierra, intervención de terceros no autorizados ni sellos de seguridad rotos.\n4. Devoluciones: dentro de las 72 horas de recibido el producto, sellado, sin uso y en su empaque original; sujetas a evaluación y a un cargo por reposición de hasta 15% según mayorista/marca.\n5. Software, licencias, consumibles y productos de pedido especial no admiten devolución una vez abiertos, activados o importados.\n6. Tiempo de atención RMA referencial: 7 a 15 días útiles, según marca.\n7. Atención de garantías: ventas@lacruzgroup.com, indicando código de cotización o factura y número de serie.';
+function guardarGarTpl(){ localStorage.setItem('lcg_gar_tpl', document.getElementById('garantias').value); alert('Plantilla de garantías guardada para futuras cotizaciones en este equipo.'); }
+function restaurarGar(){ localStorage.removeItem('lcg_gar_tpl'); document.getElementById('garantias').value = GAR_DEF; saveDraft(); }
+
+let condDirty = false;
+let prodSeq = 0;
+
+/* ================= SHAREPOINT (Clientes en vivo + Historial automático) ================= */
+const SP_SCOPES = ['Sites.ReadWrite.All'];
+let spMsal = null, spAccount = null, spSiteId = null, spListCliId = null, spListHistId = null;
+
+function spConfig(){
+  try{ return JSON.parse(localStorage.getItem('lcg_sp_config')||'null'); }catch(e){ return null; }
+}
+function guardarConfigSP(){
+  const cfg = {
+    clientId: spClientId.value.trim(), tenant: spTenant.value.trim(),
+    host: spHost.value.trim().replace(/^https?:\/\//,''), path: spPath.value.trim(),
+    listCli: spListCli.value.trim()||'LCG_Clientes', listHist: spListHist.value.trim()||'LCG_Historial_Cotizaciones'
+  };
+  if(!cfg.clientId||!cfg.tenant||!cfg.host||!cfg.path){ spStatusMsg.textContent='Faltan campos obligatorios (Client ID, Tenant, Hostname, Ruta).'; spStatusMsg.style.color='#c0392b'; return; }
+  localStorage.setItem('lcg_sp_config', JSON.stringify(cfg));
+  spStatusMsg.textContent='Configuración guardada en este equipo. Ahora presiona "Conectar con Microsoft".';
+  spStatusMsg.style.color='var(--ok)';
+}
+function abrirSP(){
+  const cfg = spConfig()||{};
+  spClientId.value=cfg.clientId||''; spTenant.value=cfg.tenant||''; spHost.value=cfg.host||'';
+  spPath.value=cfg.path||''; spListCli.value=cfg.listCli||'LCG_Clientes'; spListHist.value=cfg.listHist||'LCG_Historial_Cotizaciones';
+  spStatusMsg.textContent = spAccount ? ('Conectado como '+spAccount.username) : 'Sin conectar. El cotizador funciona en modo local (importar/copiar manual) mientras tanto.';
+  spStatusMsg.style.color = spAccount ? 'var(--ok)' : 'var(--mut)';
+  dlgSP.showModal();
+}
+function spSetEstado(txt, ok){
+  spEstado.textContent = txt;
+  btnSP.style.background = ok ? 'rgba(29,158,111,.28)' : 'rgba(255,255,255,.12)';
+}
+async function initMsal(){
+  const cfg = spConfig();
+  if(!cfg || !cfg.clientId) return null;
+  if(!spMsal){
+    spMsal = new msal.PublicClientApplication({
+      auth: { clientId: cfg.clientId, authority: 'https://login.microsoftonline.com/'+cfg.tenant, redirectUri: window.location.href.split('#')[0] },
+      cache: { cacheLocation: 'localStorage' }
+    });
+    await spMsal.initialize();
+  }
+  return spMsal;
+}
+async function conectarSP(){
+  guardarConfigSP();
+  const cfg = spConfig();
+  if(!cfg || !cfg.clientId){ return; }
+  try{
+    spStatusMsg.textContent='Abriendo ventana de inicio de sesión de Microsoft…'; spStatusMsg.style.color='var(--mut)';
+    const app = await initMsal();
+    const res = await app.loginPopup({ scopes: SP_SCOPES });
+    spAccount = res.account;
+    spStatusMsg.textContent='Conectado como '+spAccount.username+'. Cargando clientes…'; spStatusMsg.style.color='var(--ok)';
+    spSetEstado('conectando…', false);
+    await spResolverSitioYListas();
+    await cargarClientesSP();
+    spSetEstado('en vivo ✓', true);
+    spStatusMsg.textContent='Conectado como '+spAccount.username+'. Clientes cargados en vivo desde SharePoint.';
+  }catch(e){
+    console.error(e);
+    spStatusMsg.textContent='No se pudo conectar: '+(e.message||e); spStatusMsg.style.color='#c0392b';
+    spSetEstado('desconectado', false);
+  }
+}
+function desconectarSP(){
+  spAccount = null; spSiteId = null; spListCliId = null; spListHistId = null;
+  spSetEstado('desconectado', false);
+  spStatusMsg.textContent='Desconectado. El cotizador vuelve al modo local.';
+  spStatusMsg.style.color='var(--mut)';
+}
+async function spToken(){
+  const app = await initMsal();
+  try{
+    const res = await app.acquireTokenSilent({ scopes: SP_SCOPES, account: spAccount });
+    return res.accessToken;
+  }catch(e){
+    const res = await app.acquireTokenPopup({ scopes: SP_SCOPES, account: spAccount });
+    return res.accessToken;
+  }
+}
+async function spGraph(path, opts){
+  const token = await spToken();
+  const res = await fetch('https://graph.microsoft.com/v1.0'+path, Object.assign({
+    headers: Object.assign({ 'Authorization': 'Bearer '+token, 'Content-Type': 'application/json' }, (opts&&opts.headers)||{})
+  }, opts||{}));
+  if(!res.ok){ const t = await res.text(); throw new Error('Graph '+res.status+': '+t.slice(0,200)); }
+  return res.status===204 ? null : res.json();
+}
+async function spResolverSitioYListas(){
+  const cfg = spConfig();
+  const site = await spGraph('/sites/'+cfg.host+':'+cfg.path);
+  spSiteId = site.id;
+  const listas = await spGraph('/sites/'+spSiteId+'/lists?$select=id,displayName');
+  const lCli = listas.value.find(l=>l.displayName===cfg.listCli);
+  const lHist = listas.value.find(l=>l.displayName===cfg.listHist);
+  if(!lCli) throw new Error('No se encontró la lista "'+cfg.listCli+'" en el sitio.');
+  if(!lHist) throw new Error('No se encontró la lista "'+cfg.listHist+'" en el sitio.');
+  spListCliId = lCli.id; spListHistId = lHist.id;
+}
+async function cargarClientesSP(){
+  let url = '/sites/'+spSiteId+'/lists/'+spListCliId+'/items?expand=fields&$top=500';
+  const todos = [];
+  while(url){
+    const data = await spGraph(url.startsWith('http') ? url.replace('https://graph.microsoft.com/v1.0','') : url);
+    todos.push(...data.value);
+    url = data['@odata.nextLink'] || null;
+  }
+  const mapeados = todos.map(it=>{
+    const f = it.fields||{};
+    return { empresa:f.Title||'', ruc:f.RUC||'', contacto:f.Contacto||'', correo:f.Correo||'', telefono:f.Telefono||'', direccion:f.Direccion||'', distrito:f.Distrito||'', id_cliente:f.ID_Cliente||'' };
+  }).filter(c=>c.empresa);
+  if(mapeados.length){
+    CLIENTES = mapeados;
+    localStorage.setItem('lcg_clientes_base', JSON.stringify(mapeados));
+    buildDatalist();
+  }
+}
+async function registrarHistorialSP(fila){
+  // fila: {codigo,cliente,id_cliente,vendedor,fecha,moneda,tc,venta,costo,utilidad,comision_pct,comision,estado}
+  if(!spAccount || !spListHistId) return false; // modo local: no interrumpe el flujo, solo no registra en vivo
+  try{
+    await spGraph('/sites/'+spSiteId+'/lists/'+spListHistId+'/items', {
+      method:'POST',
+      body: JSON.stringify({ fields: {
+        Title: fila.codigo, Cliente: fila.cliente, ID_Cliente: fila.id_cliente||'',
+        Vendedor: fila.vendedor, Fecha_Cotizacion: fila.fecha, Moneda: fila.moneda,
+        Tipo_Cambio: fila.tc, Venta_Sin_IGV: fila.venta, Costo: fila.costo, Utilidad: fila.utilidad,
+        Comision_Pct: fila.comision_pct, Comision_Monto: fila.comision, Estado: fila.estado||'Cotizado'
+      }})
+    });
+    return true;
+  }catch(e){
+    console.error('No se pudo registrar en LCG_Historial_Cotizaciones:', e);
+    return false;
+  }
+}
+async function intentarReconectarSP(){
+  const cfg = spConfig();
+  if(!cfg || !cfg.clientId) return;
+  try{
+    const app = await initMsal();
+    const cuentas = app.getAllAccounts();
+    if(!cuentas.length) return;
+    spAccount = cuentas[0];
+    spSetEstado('conectando…', false);
+    await spResolverSitioYListas();
+    await cargarClientesSP();
+    spSetEstado('en vivo ✓', true);
+  }catch(e){ console.warn('Reconexión SharePoint no disponible:', e.message); spSetEstado('desconectado', false); }
+}
+
+/* ================= INIT ================= */
+function nextCode(){
+  const yy = String(new Date().getFullYear()%100).padStart(2,'0');
+  const last = localStorage.getItem('lcg_last_code')||'';
+  const m = last.match(/^(\d{2})-?(\d+)$/);
+  if(m && m[1]===yy) return yy+'-'+String(+m[2]+1).padStart(5,'0');
+  return yy + (yy==='26' ? '-00480' : '-00001');   // 2026 arranca en 00480 (nuevo inicio de trazabilidad, se omite 00479); años siguientes en 00001
+}
+function init(){
+  try{const cs=JSON.parse(localStorage.getItem('lcg_consultores')||'null'); if(Array.isArray(cs)&&cs.length) CONSULTORES=cs;}catch(e){}
+  try{const ms=JSON.parse(localStorage.getItem('lcg_mayoristas')||'null'); if(Array.isArray(ms)&&ms.length) MAYORISTAS=ms;}catch(e){}
+  const sel = document.getElementById('consultor');
+  sel.innerHTML = CONSULTORES.map(c=>`<option>${c.n}</option>`).join('');
+  document.getElementById('fecha').value = new Date().toISOString().slice(0,10);
+  // clientes: base reemplazada (lista SharePoint) o embebida + agregados
+  try{
+    const base = JSON.parse(localStorage.getItem('lcg_clientes_base')||'null');
+    if(Array.isArray(base) && base.length){ CLIENTES = base; }
+    else {
+      const extra = JSON.parse(localStorage.getItem('lcg_clientes_extra')||'[]');
+      if(extra.length) CLIENTES = CLIENTES.concat(extra);
+    }
+  }catch(e){}
+  buildDatalist();
+  // borrador
+  const draft = localStorage.getItem('lcg_draft');
+  if(draft){ try{ loadState(JSON.parse(draft)); }catch(e){ addProd(); } }
+  else addProd();
+  if(!document.getElementById('codigo').value.trim()) document.getElementById('codigo').value=nextCode();
+  if(!document.getElementById('garantias').value.trim()) document.getElementById('garantias').value = localStorage.getItem('lcg_gar_tpl')||GAR_DEF;
+  applyConf();
+  recalc();
+  intentarReconectarSP();
+}
+function buildDatalist(){
+  document.getElementById('dlClientes').innerHTML =
+    CLIENTES.map(c=>`<option value="${esc(c.empresa)}">`).join('');
+  document.getElementById('hintCli').textContent = CLIENTES.length+' clientes en la base';
+}
+function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;')}
+function escNl(s){return esc(s).replace(/\n/g,'<br>')}
+
+/* ================= CLIENTES ================= */
+function pickCliente(name){
+  const c = CLIENTES.find(x=>x.empresa.toLowerCase()===String(name).toLowerCase());
+  if(!c) return;
+  cEmpresa.value=c.empresa; cRuc.value=c.ruc||''; cContacto.value=c.contacto||'';
+  cCorreo.value=c.correo||''; cTelefono.value=c.telefono||'';
+  cDireccion.value=c.direccion||''; cDistrito.value=c.distrito||'';
+  recalc();
+}
+function limpiarCliente(){
+  ['cEmpresa','cRuc','cContacto','cCorreo','cTelefono','cDireccion','cDistrito','buscaCli']
+    .forEach(id=>document.getElementById(id).value='');
+  recalc();
+}
+function parseCSV(txt){
+  const first = txt.split(/\r?\n/)[0]||'';
+  const delim = (first.match(/;/g)||[]).length > (first.match(/,/g)||[]).length ? ';' : ',';
+  const rows=[]; let row=[], cur='', q=false;
+  for(let i=0;i<txt.length;i++){
+    const ch=txt[i];
+    if(q){
+      if(ch==='"'){ if(txt[i+1]==='"'){cur+='"';i++;} else q=false; }
+      else cur+=ch;
+    } else {
+      if(ch==='"') q=true;
+      else if(ch===delim){ row.push(cur); cur=''; }
+      else if(ch==='\n'){ row.push(cur.replace(/\r$/,'')); rows.push(row); row=[]; cur=''; }
+      else cur+=ch;
+    }
+  }
+  if(cur!==''||row.length){ row.push(cur.replace(/\r$/,'')); rows.push(row); }
+  return rows.filter(r=>r.some(c=>c&&c.trim()));
+}
+function importarClientes(inp){
+  const f = inp.files[0]; if(!f) return;
+  const fin = rows => {
+    const nuevos = rows.filter(r=>r.empresa);
+    if(!nuevos.length){alert('No se encontraron clientes en el archivo.');inp.value='';return;}
+    const reemplazar = confirm('Se leyeron '+nuevos.length+' clientes.\n\nACEPTAR — Reemplazar toda la base con este archivo (recomendado: el archivo viene de la lista de SharePoint, la fuente oficial).\nCANCELAR — Solo agregar los nuevos a la base actual.');
+    if(reemplazar){
+      CLIENTES = nuevos;
+      try{ localStorage.setItem('lcg_clientes_base', JSON.stringify(nuevos)); }catch(e){}
+      localStorage.removeItem('lcg_clientes_extra');
+    } else {
+      CLIENTES = CLIENTES.concat(nuevos);
+      const seen = {}; CLIENTES = CLIENTES.filter(c=>{const k=c.empresa.toLowerCase().trim(); if(seen[k])return false; seen[k]=1; return true;});
+      let prev=[]; try{prev=JSON.parse(localStorage.getItem('lcg_clientes_extra')||'[]')}catch(e){}
+      try{ localStorage.setItem('lcg_clientes_extra', JSON.stringify(prev.concat(nuevos))); }catch(e){}
+    }
+    buildDatalist();
+    alert('Base actual: '+CLIENTES.length+' clientes.');
+    inp.value='';
+  };
+  const norm = o => {
+    const g = k => { for(const key in o){ if(key.toLowerCase().includes(k)) return String(o[key]??'').trim(); } return ''; };
+    return {empresa:g('empresa')||g('nombre'), distrito:g('distrito'), direccion:g('direcci'),
+            ruc:g('ruc'), contacto:g('contacto')||g('cliente'), correo:g('correo')||g('mail'), telefono:g('tel')};
+  };
+  if(/\.csv$/i.test(f.name)){
+    const rd = new FileReader();
+    rd.onload = e => {
+      const rows = parseCSV(String(e.target.result).replace(/^\uFEFF/,''));
+      if(rows.length<2){alert('El CSV no contiene datos.');return;}
+      const hd = rows[0].map(x=>x.trim());
+      fin(rows.slice(1).map(v=>{const o={};hd.forEach((hh,i)=>o[hh]=v[i]);return norm(o);}));
+    };
+    rd.readAsText(f);
+  } else if(typeof XLSX !== 'undefined'){
+    const rd = new FileReader();
+    rd.onload = e => {
+      const wb = XLSX.read(e.target.result,{type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      fin(XLSX.utils.sheet_to_json(ws).map(norm));
+    };
+    rd.readAsArrayBuffer(f);
+  } else alert('Sin conexión a internet no es posible leer .xlsx — guarda el archivo como CSV e intenta de nuevo.');
+}
+
+/* ================= PRODUCTOS ================= */
+function addProd(data){
+  const id = ++prodSeq;
+  const d = Object.assign({desc:'',pn:'',mayorista:'Deltron',monCosto:'USD',costo:'',logi:'',mo:'',adic:'',margen:15,qty:1}, data||{});
+  const div = document.createElement('div');
+  div.className='prod'; div.id='p'+id;
+  div.innerHTML = `
+  <div class="prod-head">
+    <span class="idx">${'#'}</span>
+    <span class="res" id="p${id}res"></span>
+    <button class="b-danger" title="Eliminar" onclick="delProd(${id})">✕</button>
+  </div>
+  <div class="grid g4">
+    <div style="grid-column:span 3"><label>Descripción *</label><textarea id="p${id}desc" rows="3" placeholder="Descripción del mayorista. Para servicios con varias actividades, escribe una por línea." oninput="recalc()">${esc(d.desc)}</textarea></div>
+    <div><label>Part Number (PN)</label><input id="p${id}pn" value="${esc(d.pn)}" oninput="recalc()"></div>
+    <div style="grid-column:span 4"><label>Imagen referencial (opcional)</label>
+      <div style="display:flex;gap:10px;align-items:center">
+        <button class="b-line" style="padding:5px 10px;font-size:12px" onclick="document.getElementById('p${id}img').click()">🖼 Subir imagen</button>
+        <input type="file" id="p${id}img" accept="image/*" style="display:none" onchange="setImg(${id},this)">
+        <span id="p${id}thumb" class="hint">sin imagen</span>
+      </div>
+    </div>
+  </div>
+  <div class="intern">
+    <span class="tag">⚙ Cálculo interno</span>
+    <div class="grid g4" style="margin-top:8px">
+      <div><label>Mayorista <a href="#" onclick="gestMayoristas();return false" style="float:right;font-size:10px;color:var(--cyan-d);text-transform:none;font-weight:600">⚙ gestionar</a></label><select id="p${id}may" onchange="recalc()">${MAYORISTAS.map(m=>`<option ${m===d.mayorista?'selected':''}>${esc(m)}</option>`).join('')}</select></div>
+      <div><label>Moneda costo</label><select id="p${id}mc" onchange="recalc()"><option value="USD" ${d.monCosto==='USD'?'selected':''}>US$</option><option value="PEN" ${d.monCosto==='PEN'?'selected':''}>S/</option></select></div>
+      <div><label>Costo unit. (sin IGV)</label><input type="number" id="p${id}costo" value="${d.costo}" step="0.01" min="0" oninput="recalc()"></div>
+      <div><label>Margen %</label><input type="number" id="p${id}mg" value="${d.margen}" step="0.5" min="0" max="90" oninput="recalc()"></div>
+      <div><label>Logística (x unid.)</label><input type="number" id="p${id}logi" value="${d.logi}" step="0.01" min="0" placeholder="0" oninput="recalc()"></div>
+      <div><label>M. Obra (x unid.)</label><input type="number" id="p${id}mo" value="${d.mo}" step="0.01" min="0" placeholder="0" oninput="recalc()"></div>
+      <div><label>Adicional (x unid.)</label><input type="number" id="p${id}adic" value="${d.adic}" step="0.01" min="0" placeholder="0" oninput="recalc()"></div>
+      <div><label>Cantidad</label><input type="number" id="p${id}qty" value="${d.qty}" step="1" min="1" oninput="recalc()"></div>
+    </div>
+    <div class="chips" id="p${id}chips"></div>
+  </div>`;
+  document.getElementById('prods').appendChild(div);
+  if(d.img) PRODIMG[id]=d.img;
+  renderThumb(id);
+  renum(); recalc();
+}
+function delProd(id){
+  document.getElementById('p'+id).remove();
+  delete PRODIMG[id];
+  renum(); recalc();
+}
+const PRODIMG={};
+function setImg(id,inp){
+  const f=inp.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      const M=800, k=Math.min(1, M/Math.max(img.width,img.height));
+      const cv=document.createElement('canvas');
+      cv.width=Math.round(img.width*k); cv.height=Math.round(img.height*k);
+      const cx=cv.getContext('2d');
+      cx.fillStyle='#fff'; cx.fillRect(0,0,cv.width,cv.height);
+      cx.drawImage(img,0,0,cv.width,cv.height);
+      PRODIMG[id]=cv.toDataURL('image/jpeg',0.85);
+      renderThumb(id); recalc();
+    };
+    img.src=e.target.result;
+  };
+  rd.readAsDataURL(f); inp.value='';
+}
+function renderThumb(id){
+  const el=document.getElementById('p'+id+'thumb'); if(!el) return;
+  el.innerHTML = PRODIMG[id]
+    ? '<img src="'+PRODIMG[id]+'" style="height:46px;border:1px solid var(--line);border-radius:6px;vertical-align:middle"> <button class="b-danger" onclick="delImg('+id+')" title="Quitar imagen">✕</button>'
+    : 'sin imagen';
+}
+function delImg(id){ delete PRODIMG[id]; renderThumb(id); recalc(); }
+function renum(){
+  document.querySelectorAll('#prods .prod').forEach((p,i)=>p.querySelector('.idx').textContent=i+1);
+}
+function prodIds(){
+  return [...document.querySelectorAll('#prods .prod')].map(p=>p.id.slice(1));
+}
+
+/* ================= CÁLCULO ================= */
+function fx(v){const n=parseFloat(v);return isNaN(n)?0:n}
+function getProd(id){
+  const g = s => document.getElementById('p'+id+s).value;
+  return {desc:g('desc'), pn:g('pn'), mayorista:g('may'), monCosto:g('mc'),
+          costo:fx(g('costo')), logi:fx(g('logi')), mo:fx(g('mo')), adic:fx(g('adic')),
+          margen:fx(g('mg')), qty:Math.max(1,fx(g('qty'))), img:PRODIMG[id]||''};
+}
+function calcProd(p, mon, tc){
+  // costo unitario total en moneda de costo
+  const cu = p.costo + p.logi + p.mo + p.adic;
+  // convertir a moneda de venta
+  let cuV = cu;
+  if(p.monCosto==='USD' && mon==='PEN') cuV = cu*tc;
+  if(p.monCosto==='PEN' && mon==='USD') cuV = cu/tc;
+  const mg = Math.min(p.margen,90)/100;
+  const pv = mg<1 ? cuV/(1-mg) : cuV;          // PV unit sin IGV
+  return {cuV, qty:p.qty, pvU:r2(pv), totV:r2(r2(pv)*p.qty), totC:r2(cuV*p.qty)};
+}
+function r2(n){return Math.round(n*100)/100}
+function fmt(n, mon){
+  const s = (mon==='USD'?'US$ ':'S/ ');
+  return s + n.toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function totales(rs){
+  const sub = r2(rs.reduce((s,r)=>s+r.totV,0));
+  const igv = r2(sub*IGV);
+  return {sub, igv, tot:r2(sub+igv)};
+}
+
+function recalc(){
+  const mon = document.getElementById('moneda').value;
+  const tc = fx(document.getElementById('tc').value)||1;
+  // consultor
+  const c = CONSULTORES.find(x=>x.n===document.getElementById('consultor').value)||CONSULTORES[0];
+  consTel.value=c.t; consMail.value=c.m;
+  // fecha límite
+  const f = document.getElementById('fecha').value;
+  if(f){
+    const d = new Date(f+'T12:00:00'); d.setDate(d.getDate()+ (fx(document.getElementById('validez').value)||5));
+    fechaLim.value = d.toLocaleDateString('es-PE');
+  }
+  // productos
+  let inv=0;
+  const calc = prodIds().map(id=>{const p=getProd(id); return {id,p,r:calcProd(p,mon,tc)}});
+  const tt = totales(calc.map(x=>x.r));
+  calc.forEach(({id,p,r})=>{
+    inv+=r.totC;
+    document.getElementById('p'+id+'res').innerHTML =
+      p.costo? `P.Unit: <b>${fmt(r.pvU,mon)}</b> &nbsp;·&nbsp; Total: <b>${fmt(r.totV,mon)}</b>`:'';
+    document.getElementById('p'+id+'chips').innerHTML = p.costo? [
+      `Costo total: <b>${fmt(r.totC,mon)}</b>`,
+      `Venta: <b>${fmt(r.totV,mon)}</b>`,
+      `Utilidad: <b>${fmt(r2(r.totV-r.totC),mon)}</b>`,
+      `Comisión 4%: <b>${fmt(r2((r.totV-r.totC)*COMISION),mon)}</b>`
+    ].map(x=>`<span class="chip">${x}</span>`).join(''):'';
+  });
+  const sub=tt.sub, igv=tt.igv, tot=tt.tot, util=r2(sub-inv);
+  const com=r2(util*COMISION), neta=r2(util-com);
+  rSub.textContent=fmt(r2(sub),mon); rIgv.textContent=fmt(igv,mon); rTot.textContent=fmt(tot,mon);
+  rInv.textContent=fmt(r2(inv),mon); rUtil.textContent=fmt(util,mon);
+  rMgn.textContent= sub? (util/sub*100).toFixed(1)+' %':'—';
+  rCom.textContent=fmt(com,mon); rNeta.textContent=fmt(neta,mon);
+  // condiciones
+  if(!condDirty) document.getElementById('condiciones').value = buildCond(mon);
+  saveDraft();
+}
+function defaultTpl(){
+  return '1. Entrega en oficina del cliente (dentro de Lima Metropolitana) previa coordinación.\n2. Validez de la oferta: {VALIDEZ} días o hasta agotar stock. Disponibilidad: 3 días.\n3. Montos expresados en {MONEDA}; no incluyen IGV.\n4. Forma de pago: {PAGO}.\n5. Enviar OC/OS a: '+EMPRESA.mail+' — a nombre de: '+EMPRESA.nombre+'; RUC: '+EMPRESA.ruc+'.\n6. Cuenta Soles BCP: 191-9864652-0-47 · CCI: 00219100986465204752.\n7. Cuenta Dólares BCP: 191-9854640-1-26 · CCI: 00219100985464012650.';
+}
+function buildCond(mon){
+  const v = fx(document.getElementById('validez').value)||5;
+  const monTxt = mon==='USD'?'Dólares Americanos':'Soles Peruanos';
+  const t = localStorage.getItem('lcg_cond_tpl')||defaultTpl();
+  return t.replace(/\{VALIDEZ\}/g,v).replace(/\{MONEDA\}/g,monTxt).replace(/\{PAGO\}/g,document.getElementById('pago').value);
+}
+function editarPlantilla(){
+  tplText.value = localStorage.getItem('lcg_cond_tpl')||defaultTpl();
+  dlgTpl.showModal();
+}
+function guardarPlantilla(){
+  localStorage.setItem('lcg_cond_tpl', tplText.value);
+  dlgTpl.close(); condDirty=false; recalc();
+}
+function restaurarPlantilla(){
+  localStorage.removeItem('lcg_cond_tpl'); tplText.value=defaultTpl();
+}
+function guardarCondTpl(){
+  const txt = document.getElementById('condiciones').value;
+  const tienePlaceholders = /\{VALIDEZ\}|\{MONEDA\}|\{PAGO\}/.test(txt);
+  if(!tienePlaceholders){
+    const ok = confirm('El texto actual no contiene las variables {VALIDEZ}, {MONEDA} o {PAGO}. Si guardas así, esos valores quedarán fijos (no se actualizarán automáticamente) en futuras cotizaciones.\n\n¿Guardar igual como plantilla general?');
+    if(!ok) return;
+  }
+  localStorage.setItem('lcg_cond_tpl', txt);
+  condDirty = false;
+  alert('Plantilla de condiciones guardada para futuras cotizaciones en este equipo.');
+}
+
+/* ================= ESTADO ================= */
+function getState(){
+  const v = id=>document.getElementById(id).value;
+  return {codigo:v('codigo'),referencia:v('referencia'),consultor:v('consultor'),
+    fecha:v('fecha'),validez:v('validez'),pago:v('pago'),moneda:v('moneda'),tc:v('tc'),
+    cliente:{empresa:v('cEmpresa'),ruc:v('cRuc'),contacto:v('cContacto'),correo:v('cCorreo'),
+             telefono:v('cTelefono'),direccion:v('cDireccion'),distrito:v('cDistrito')},
+    condiciones:v('condiciones'),condDirty,garantias:v('garantias'),
+    prods:prodIds().map(getProd)};
+}
+function loadState(s){
+  const set=(id,val)=>{const e=document.getElementById(id); if(e&&val!==undefined)e.value=val};
+  set('codigo',s.codigo);set('referencia',s.referencia);set('consultor',s.consultor);
+  set('fecha',s.fecha);set('validez',s.validez);set('pago',s.pago);set('moneda',s.moneda);set('tc',s.tc);
+  const c=s.cliente||{};
+  set('cEmpresa',c.empresa);set('cRuc',c.ruc);set('cContacto',c.contacto);set('cCorreo',c.correo);
+  set('cTelefono',c.telefono);set('cDireccion',c.direccion);set('cDistrito',c.distrito);
+  document.getElementById('prods').innerHTML=''; prodSeq=0;
+  (s.prods&&s.prods.length?s.prods:[{}]).forEach(p=>addProd(p));
+  condDirty=!!s.condDirty;
+  if(condDirty) set('condiciones',s.condiciones);
+  set('garantias', s.garantias!==undefined ? s.garantias : (localStorage.getItem('lcg_gar_tpl')||GAR_DEF));
+}
+function saveDraft(){ try{ localStorage.setItem('lcg_draft', JSON.stringify(getState())); }catch(e){} }
+function nuevaCot(){
+  if(!confirm('¿Iniciar una cotización nueva? Se limpiará el formulario actual.'))return;
+  localStorage.removeItem('lcg_draft'); condDirty=false;
+  const code=document.getElementById('codigo').value;
+  if(code) localStorage.setItem('lcg_last_code',code);
+  loadState({prods:[{}]});
+  document.getElementById('fecha').value=new Date().toISOString().slice(0,10);
+  document.getElementById('codigo').value=nextCode();
+  limpiarCliente(); recalc();
+}
+function guardarJSON(){
+  const s=getState();
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(s,null,1)],{type:'application/json'}));
+  a.download='COT_'+(s.codigo||'sin-codigo').replace(/[^\w-]/g,'_')+'.json';
+  a.click();
+  if(s.codigo) localStorage.setItem('lcg_last_code',s.codigo);
+}
+function abrirJSON(inp){
+  const f=inp.files[0]; if(!f)return;
+  const rd=new FileReader();
+  rd.onload=e=>{ try{ loadState(JSON.parse(e.target.result)); recalc(); }catch(err){alert('Archivo no válido')} inp.value=''; };
+  rd.readAsText(f);
+}
+
+/* ================= DOCUMENTO PDF ================= */
+function buildDoc(){
+  const s=getState(), mon=s.moneda, tc=fx(s.tc)||1;
+  const c=CONSULTORES.find(x=>x.n===s.consultor)||CONSULTORES[0];
+  const pl=s.prods.filter(p=>p.desc);
+  const rs=pl.map(p=>calcProd(p,mon,tc));
+  const tt=totales(rs);
+  const imgs=pl.map((p,i)=>p.img?{i:i+1,pn:p.pn,src:p.img}:null).filter(Boolean);
+  const rows=pl.map((p,i)=>{
+    const r=rs[i];
+    return `<tr><td class="c">${i+1}</td>
+      <td>${escNl(p.desc)}${p.pn?`<div class="pn">PN: ${esc(p.pn)}</div>`:''}</td>
+      <td class="r">${fmt(r.pvU,mon)}</td><td class="c">${p.qty}</td>
+      <td class="r"><b>${fmt(r.totV,mon)}</b></td></tr>`;
+  }).join('');
+  const sub=tt.sub, igv=tt.igv, tot=tt.tot;
+  const fEm=s.fecha? new Date(s.fecha+'T12:00:00').toLocaleDateString('es-PE'):'';
+  const cl=s.cliente;
+  document.getElementById('printDoc').innerHTML=`
+  <div class="doc">
+    <div class="doc-head">
+      ${docLogoHTML()}
+      <div class="doc-num">
+        <div class="t">COTIZACIÓN</div>
+        <div class="n">N° ${esc(s.codigo)||'—'}</div>
+        <div class="d">Emisión: ${fEm} &nbsp;·&nbsp; Válida hasta: ${document.getElementById('fechaLim').value}</div>
+      </div>
+    </div>
+    ${s.referencia?`<div class="doc-band">REF: ${esc(s.referencia)}</div>`:''}
+    <div class="doc-body">
+      <div class="doc-cols">
+        <div class="doc-box">
+          <div class="bt">Datos del cliente</div>
+          <table>
+            <tr><td>Empresa</td><td><b>${esc(cl.empresa)}</b></td></tr>
+            ${cl.ruc?`<tr><td>RUC</td><td>${esc(cl.ruc)}</td></tr>`:''}
+            ${cl.contacto?`<tr><td>Atención</td><td>${esc(cl.contacto)}</td></tr>`:''}
+            ${cl.correo?`<tr><td>Correo</td><td>${esc(cl.correo)}</td></tr>`:''}
+            ${cl.telefono?`<tr><td>Teléfono</td><td>${esc(cl.telefono)}</td></tr>`:''}
+            ${cl.direccion?`<tr><td>Dirección</td><td>${esc(cl.direccion)}${cl.distrito?' — '+esc(cl.distrito):''}</td></tr>`:''}
+          </table>
+        </div>
+        <div class="doc-box">
+          <div class="bt">Nuestra propuesta</div>
+          <table>
+            <tr><td>Consultor</td><td><b>${esc(c.n)}</b></td></tr>
+            <tr><td>Celular</td><td>${esc(c.t)}</td></tr>
+            <tr><td>Correo</td><td>${esc(c.m)}</td></tr>
+            <tr><td>Forma pago</td><td>${esc(s.pago)}</td></tr>
+            <tr><td>Moneda</td><td>${mon==='USD'?'Dólares Americanos (US$)':'Soles (S/)'}</td></tr>
+          </table>
+        </div>
+      </div>
+      <table class="doc-items">
+        <thead><tr><th class="c" style="width:8mm">N°</th><th>Descripción</th>
+        <th class="r" style="width:26mm">P. Unitario</th><th class="c" style="width:13mm">Cant.</th>
+        <th class="r" style="width:28mm">Total</th></tr></thead>
+        <tbody>${rows||'<tr><td colspan="5" class="c">— Sin productos —</td></tr>'}</tbody>
+      </table>
+      <div class="doc-tot"><table>
+        <tr><td>Subtotal</td><td>${fmt(r2(sub),mon)}</td></tr>
+        <tr><td>IGV (18%)</td><td>${fmt(igv,mon)}</td></tr>
+        <tr class="tt"><td>TOTAL</td><td>${fmt(tot,mon)}</td></tr>
+      </table></div>
+      ${imgs.length?`<div class="doc-imgs"><div class="ct">IMÁGENES REFERENCIALES</div><div class="doc-imggrid">${imgs.map(o=>`<figure><div class="imgbox"><img src="${o.src}"></div><figcaption>Ítem ${o.i}${o.pn?' · PN: '+esc(o.pn):''}</figcaption></figure>`).join('')}</div></div>`:''}
+      <div class="doc-cond"><div class="ct">CONDICIONES COMERCIALES</div>${esc(s.condiciones)}</div>
+      ${s.garantias?`<div class="doc-cond" style="margin-top:3mm"><div class="ct">GARANTÍA Y DEVOLUCIONES</div>${esc(s.garantias)}</div>`:''}
+    </div>
+    <div class="doc-foot">
+      <div><b>${EMPRESA.nombre}</b> · RUC ${EMPRESA.ruc}<br>${EMPRESA.dir} · ${EMPRESA.mail}</div>
+      <div style="text-align:right"><span class="tag360">Tu socio 360° en TI</span><br>${EMPRESA.web}</div>
+    </div>
+  </div>`;
+}
+function togglePreview(){
+  if(document.body.classList.contains('preview')){
+    document.body.classList.remove('preview');
+    document.getElementById('btnPrev').textContent='Vista previa';
+  } else {
+    buildDoc();
+    document.body.classList.add('preview');
+    document.getElementById('btnPrev').textContent='← Volver a editar';
+  }
+}
+window.addEventListener('beforeprint', buildDoc);
+
+const FONTS=['Segoe UI','Aptos','Roboto','Oswald','Arial','Calibri','Verdana','Trebuchet MS','Georgia','Cambria','Garamond','Times New Roman'];
+function abrirAjustes(){
+  const cur=localStorage.getItem('lcg_font')||'Segoe UI';
+  document.getElementById('confFont').innerHTML=FONTS.map(f=>'<option'+(f===cur?' selected':'')+'>'+f+'</option>').join('');
+  document.getElementById('confCNavy').value=localStorage.getItem('lcg_c_navy')||'#0A1F40';
+  document.getElementById('confCCyan').value=localStorage.getItem('lcg_c_cyan')||'#24C0EB';
+  document.getElementById('confCBg').value=localStorage.getItem('lcg_c_bg')||'#F2F5F9';
+  renderLogoPrev(); dlgConf.showModal();
+}
+function cambiarColor(k,v){ localStorage.setItem(k,v); applyConf(); }
+function restaurarColores(){
+  ['lcg_c_navy','lcg_c_cyan','lcg_c_bg'].forEach(k=>localStorage.removeItem(k));
+  document.getElementById('confCNavy').value='#0A1F40';
+  document.getElementById('confCCyan').value='#24C0EB';
+  document.getElementById('confCBg').value='#F2F5F9';
+  applyConf();
+}
+function oscurecer(hex,f){
+  const n=parseInt(hex.slice(1),16);
+  const c=x=>Math.max(0,Math.round(x*f)).toString(16).padStart(2,'0');
+  return '#'+c(n>>16)+c((n>>8)&255)+c(n&255);
+}
+function renderLogoPrev(){
+  const l=localStorage.getItem('lcg_logo');
+  document.getElementById('confPrev').innerHTML = l
+    ? '<img src="'+l+'" style="height:40px;max-width:160px;object-fit:contain;border:1px solid var(--line);border-radius:6px;padding:2px;background:#fff">'
+    : '<span class="hint">logo estándar (texto)</span>';
+}
+function setLogo(inp){
+  const f=inp.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      const M=600, k=Math.min(1, M/Math.max(img.width,img.height));
+      const cv=document.createElement('canvas');
+      cv.width=Math.round(img.width*k); cv.height=Math.round(img.height*k);
+      cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+      try{ localStorage.setItem('lcg_logo', cv.toDataURL('image/png')); }
+      catch(err){ alert('La imagen es demasiado grande; usa una versión más liviana.'); return; }
+      renderLogoPrev(); applyConf();
+    };
+    img.src=e.target.result;
+  };
+  rd.readAsDataURL(f); inp.value='';
+}
+function quitarLogo(){ localStorage.removeItem('lcg_logo'); renderLogoPrev(); applyConf(); }
+function cambiarFont(){ localStorage.setItem('lcg_font', document.getElementById('confFont').value); applyConf(); }
+function applyConf(){
+  const f=localStorage.getItem('lcg_font')||'Segoe UI';
+  document.body.style.fontFamily="'"+f+"',system-ui,sans-serif";
+  let st=document.getElementById('confStyle');
+  if(!st){ st=document.createElement('style'); st.id='confStyle'; document.head.appendChild(st); }
+  st.textContent=".doc{font-family:'"+f+"',sans-serif}";
+  const rt=document.documentElement.style;
+  const cn=localStorage.getItem('lcg_c_navy'), cc=localStorage.getItem('lcg_c_cyan'), cb=localStorage.getItem('lcg_c_bg');
+  if(cn){ rt.setProperty('--navy',cn); rt.setProperty('--navy2',oscurecer(cn,1.15)); } else { rt.removeProperty('--navy'); rt.removeProperty('--navy2'); }
+  if(cc){ rt.setProperty('--cyan',cc); rt.setProperty('--cyan-d',oscurecer(cc,0.82)); } else { rt.removeProperty('--cyan'); rt.removeProperty('--cyan-d'); }
+  if(cb){ rt.setProperty('--bg',cb); } else { rt.removeProperty('--bg'); }
+  const l=localStorage.getItem('lcg_logo');
+  document.getElementById('appLogo').innerHTML = l
+    ? '<span style="background:#fff;border-radius:6px;padding:3px 8px;display:inline-flex;align-items:center"><img src="'+l+'" style="height:26px;max-width:150px;object-fit:contain"></span>'
+    : '<img src="'+LOGO_DEF+'" style="height:34px" alt="LACRUZ GROUP">';
+}
+function docLogoHTML(){
+  const l=localStorage.getItem('lcg_logo');
+  if(l) return '<div style="background:#fff;border-radius:2mm;padding:2mm 4mm;display:flex;align-items:center;max-width:62mm"><img src="'+l+'" style="max-height:14mm;max-width:54mm;object-fit:contain"></div>';
+  return '<div style="display:flex;flex-direction:column;gap:1.5mm;align-items:flex-start"><img src="'+LOGO_DEF+'" style="height:15mm;width:auto;object-fit:contain" alt="LACRUZ GROUP"><small style="font-size:6.5pt;letter-spacing:2px;color:var(--cyan)">INTEGRADORES DE SOLUCIONES TECNOLÓGICAS</small></div>';
+}
+function copiarRegistro(){
+  const s=getState(), mon=s.moneda, tc=fx(s.tc)||1;
+  const rs=s.prods.filter(p=>p.desc).map(p=>calcProd(p,mon,tc));
+  if(!rs.length){alert('No hay productos en la cotización.');return;}
+  const t=totales(rs);
+  const inv=r2(rs.reduce((a,r)=>a+r.totC,0));
+  const util=r2(t.sub-inv), com=r2(util*COMISION);
+  const fila=[s.codigo,s.fecha,s.consultor,s.cliente.empresa,mon,tc,t.sub.toFixed(2),inv.toFixed(2),util.toFixed(2),com.toFixed(2)].join('\t');
+  const ok=()=>alert('Fila copiada al portapapeles (incluye utilidad y comisión 4%).\nPégala en REGISTRO_COMISIONES.xlsx, hoja Registro, primera fila libre, COLUMNA A — en la cuadrícula, no dentro de una celda.\nLas columnas en soles (K–M) se calculan solas. Marca el Estado en la columna N.');
+  if(navigator.clipboard&&navigator.clipboard.writeText)
+    navigator.clipboard.writeText(fila).then(ok).catch(()=>prompt('Copia esta fila manualmente:',fila));
+  else prompt('Copia esta fila manualmente:',fila);
+}
+
+function docFileName(){
+  const s=getState();
+  const emp=(s.cliente.empresa||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\w -]/g,'').trim().replace(/\s+/g,'_').slice(0,40);
+  return 'COT_'+(s.codigo||'sin-codigo').replace(/[^\w-]/g,'_')+(emp?'_'+emp:'');
+}
+function filaHistorial(){
+  const s=getState(), mon=s.moneda, tc=fx(s.tc)||1;
+  const rs=s.prods.filter(p=>p.desc).map(p=>calcProd(p,mon,tc));
+  if(!rs.length) return null;
+  const t=totales(rs);
+  const inv=r2(rs.reduce((a,r)=>a+r.totC,0));
+  const util=r2(t.sub-inv), com=r2(util*COMISION);
+  const cli = CLIENTES.find(x=>x.empresa.toLowerCase()===String(s.cliente.empresa||'').toLowerCase());
+  return { codigo:s.codigo, cliente:s.cliente.empresa, id_cliente:cli&&cli.id_cliente||'', vendedor:s.consultor,
+           fecha:s.fecha, moneda:mon, tc:tc, venta:r2(t.sub), costo:inv, utilidad:util,
+           comision_pct:COMISION, comision:com, estado:'Cotizado' };
+}
+async function descargarPDF(){
+  const code=document.getElementById('codigo').value.trim();
+  if(!code){alert('Ingresa el código de la cotización (ej. 26-00480) antes de generar el PDF.');document.getElementById('codigo').focus();return;}
+  buildDoc();
+  const t=document.title; document.title=docFileName();
+  window.print();
+  setTimeout(()=>document.title=t,800);
+  localStorage.setItem('lcg_last_code',code);
+  // Registro automático de costo/utilidad/comisión en LCG_Historial_Cotizaciones (si SharePoint está conectado)
+  const fila = filaHistorial();
+  if(fila){
+    if(spAccount){
+      const ok = await registrarHistorialSP(fila);
+      if(!ok) console.warn('Cotización '+code+' generada, pero no se pudo registrar el historial en SharePoint. Usa "Copiar fila para registro" como respaldo.');
+    } else {
+      console.info('SharePoint no conectado: registra esta cotización manualmente con "Copiar fila para registro".');
+    }
+  }
+}
+function msgEnvio(){
+  const s=getState(); const c=CONSULTORES.find(x=>x.n===s.consultor)||CONSULTORES[0];
+  const txt='Estimado(a) '+(s.cliente.contacto||'')+':\n\nLe compartimos la cotización N° '+(s.codigo||'')+(s.referencia?' ('+s.referencia+')':'')+', válida hasta el '+document.getElementById('fechaLim').value+'.\n\nQuedamos atentos a sus comentarios.\n\nSaludos cordiales,\n'+c.n+'\n'+EMPRESA.nombre+'\n'+c.t+' · '+c.m;
+  return {s,c,txt};
+}
+function abrirEnvio(){
+  const s=getState();
+  sendMail.value=s.cliente.correo||'';
+  let ph=(s.cliente.telefono||'').replace(/\D/g,'');
+  if(ph.length===9&&ph[0]==='9') ph='51'+ph;
+  sendWsp.value=ph;
+  dlgSend.showModal();
+}
+function enviarCorreo(){
+  const {s,c,txt}=msgEnvio();
+  const to=sendMail.value.trim();
+  if(!to){alert('Ingresa el correo del cliente.');return;}
+  const subj=encodeURIComponent('Cotización N° '+(s.codigo||'')+' — LACRUZ GROUP'+(s.referencia?' — '+s.referencia:''));
+  location.href='mailto:'+to+'?cc='+c.m+'&subject='+subj+'&body='+encodeURIComponent(txt);
+  dlgSend.close();
+}
+function enviarWsp(){
+  const {txt}=msgEnvio();
+  const ph=sendWsp.value.replace(/\D/g,'');
+  if(ph.length<9){alert('Ingresa un número válido con código de país (ej. 51962281473).');return;}
+  window.open('https://wa.me/'+ph+'?text='+encodeURIComponent(txt),'_blank');
+  dlgSend.close();
+}
+function gestConsultores(){
+  document.getElementById('consRows').innerHTML=CONSULTORES.map(c=>consRowHTML(c)).join('');
+  dlgCons.showModal();
+}
+function consRowHTML(c){c=c||{n:'',t:'',m:''};
+  return '<div class="grid" style="grid-template-columns:1.2fr 1fr 1.4fr 30px;margin-bottom:6px;gap:6px">'
+  +'<input placeholder="Nombre" value="'+esc(c.n)+'" class="cn"><input placeholder="Celular" value="'+esc(c.t)+'" class="ct2">'
+  +'<input placeholder="Correo" value="'+esc(c.m)+'" class="cm">'
+  +'<button class="b-danger" onclick="this.parentElement.remove()">✕</button></div>';
+}
+function addConsRow(){document.getElementById('consRows').insertAdjacentHTML('beforeend',consRowHTML());}
+function saveCons(){
+  const list=[...document.querySelectorAll('#consRows > div')].map(r=>({
+    n:r.querySelector('.cn').value.trim(), t:r.querySelector('.ct2').value.trim(), m:r.querySelector('.cm').value.trim()
+  })).filter(c=>c.n);
+  if(!list.length){alert('Debe haber al menos un vendedor.');return;}
+  CONSULTORES=list;
+  localStorage.setItem('lcg_consultores',JSON.stringify(list));
+  const sel=document.getElementById('consultor'); const cur=sel.value;
+  sel.innerHTML=CONSULTORES.map(c=>'<option>'+esc(c.n)+'</option>').join('');
+  if(CONSULTORES.some(c=>c.n===cur)) sel.value=cur;
+  dlgCons.close(); recalc();
+}
+function gestMayoristas(){
+  document.getElementById('mayRows').innerHTML=MAYORISTAS.map(m=>mayRowHTML(m)).join('');
+  dlgMay.showModal();
+}
+function mayRowHTML(m){
+  return '<div class="grid" style="grid-template-columns:1fr 30px;margin-bottom:6px;gap:6px">'
+  +'<input placeholder="Nombre del proveedor" value="'+esc(m||'')+'" class="mn">'
+  +'<button class="b-danger" onclick="this.parentElement.remove()">✕</button></div>';
+}
+function addMayRow(){document.getElementById('mayRows').insertAdjacentHTML('beforeend',mayRowHTML(''));}
+function saveMay(){
+  const list=[...document.querySelectorAll('#mayRows > div')].map(r=>r.querySelector('.mn').value.trim()).filter(Boolean);
+  if(!list.length){alert('Debe haber al menos un proveedor.');return;}
+  if(!list.includes('Otro')) list.push('Otro');
+  MAYORISTAS=list;
+  localStorage.setItem('lcg_mayoristas',JSON.stringify(list));
+  prodIds().forEach(id=>{
+    const sel=document.getElementById('p'+id+'may'); const cur=sel.value;
+    sel.innerHTML=MAYORISTAS.map(m=>'<option'+(m===cur?' selected':'')+'>'+esc(m)+'</option>').join('');
+    if(!MAYORISTAS.includes(cur)) sel.value=MAYORISTAS[0];
+  });
+  dlgMay.close(); recalc();
+}
+function mayName(o){
+  for(const k in o){ if(/proveedor|mayorista|nombre/i.test(k)) return String(o[k]??'').trim(); }
+  const vals=Object.values(o); return vals.length?String(vals[0]??'').trim():'';
+}
+function importarMayoristas(inp){
+  const f = inp.files[0]; if(!f) return;
+  const fin = nombres => {
+    const nuevos=[...new Set(nombres.map(n=>String(n??'').trim()).filter(Boolean))];
+    if(!nuevos.length){alert('No se encontraron proveedores en el archivo.');inp.value='';return;}
+    const reemplazar = confirm('Se leyeron '+nuevos.length+' proveedores.\n\nACEPTAR — Reemplazar la lista actual con este archivo (recomendado: archivo desde SharePoint, fuente oficial).\nCANCELAR — Solo agregar los nuevos a la lista actual.');
+    let list;
+    if(reemplazar) list = nuevos;
+    else {
+      list = MAYORISTAS.filter(m=>m!=='Otro').concat(nuevos);
+      const seen={}; list = list.filter(m=>{const k=m.toLowerCase(); if(seen[k])return false; seen[k]=1; return true;});
+    }
+    if(!list.includes('Otro')) list.push('Otro');
+    MAYORISTAS = list;
+    try{ localStorage.setItem('lcg_mayoristas', JSON.stringify(list)); }catch(e){}
+    prodIds().forEach(id=>{
+      const sel=document.getElementById('p'+id+'may'); const cur=sel.value;
+      sel.innerHTML=MAYORISTAS.map(m=>'<option'+(m===cur?' selected':'')+'>'+esc(m)+'</option>').join('');
+      if(!MAYORISTAS.includes(cur)) sel.value=MAYORISTAS[0];
+    });
+    const rowsEl=document.getElementById('mayRows');
+    if(rowsEl) rowsEl.innerHTML=MAYORISTAS.map(m=>mayRowHTML(m)).join('');
+    alert('Lista de proveedores actualizada: '+MAYORISTAS.length+' en total.');
+    inp.value='';
+  };
+  if(/\.csv$/i.test(f.name)){
+    const rd = new FileReader();
+    rd.onload = e => {
+      const rows = parseCSV(String(e.target.result).replace(/^﻿/,''));
+      if(rows.length<1){alert('El CSV no contiene datos.');return;}
+      const hd = rows[0].map(x=>x.trim());
+      const esHeader = hd.some(h=>/proveedor|mayorista|nombre/i.test(h));
+      const datos = esHeader ? rows.slice(1) : rows;
+      fin(datos.map(v=>{
+        if(!esHeader) return v[0];
+        const o={}; hd.forEach((h,i)=>o[h]=v[i]); return mayName(o);
+      }));
+    };
+    rd.readAsText(f);
+  } else if(typeof XLSX !== 'undefined'){
+    const rd = new FileReader();
+    rd.onload = e => {
+      const wb = XLSX.read(e.target.result,{type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      fin(XLSX.utils.sheet_to_json(ws).map(mayName));
+    };
+    rd.readAsArrayBuffer(f);
+  } else alert('Sin conexión a internet no es posible leer .xlsx — guarda el archivo como CSV e intenta de nuevo.');
+}
+
+init();
+</script>
+</body>
+</html>
