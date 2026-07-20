@@ -766,14 +766,14 @@ function addProd(data){
       <div><label>Cantidad</label><input type="number" id="p${id}qty" value="${d.qty}" step="1" min="1" oninput="recalc()"></div>
     </div>
     <div class="grid g4" style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)">
-      <div style="grid-column:span 2"><label>Precio Unit. deseado (sin IGV, opcional)</label>
+      <div style="grid-column:span 2"><label>Precio Unit. FINAL deseado (con IGV, opcional)</label>
         <div style="display:flex;gap:6px">
-          <input type="number" id="p${id}pdes" step="0.01" min="0" placeholder="Ej: 50.00" style="flex:1">
+          <input type="number" id="p${id}pdes" step="0.01" min="0" placeholder="Ej: 65.00" style="flex:1">
           <button type="button" class="b-line" style="white-space:nowrap" onclick="aplicarPrecioDeseado(${id})">↺ Aplicar</button>
         </div>
       </div>
       <div style="grid-column:span 2;display:flex;align-items:flex-end">
-        <button type="button" class="b-line" style="width:100%" onclick="redondearAlSol(${id})">↻ Redondear total de línea al sol más cercano</button>
+        <button type="button" class="b-line" style="width:100%" onclick="redondearAlSol(${id})">↻ Redondear TOTAL FINAL (con IGV) al sol más cercano</button>
       </div>
     </div>
     <div class="chips" id="p${id}chips"></div>
@@ -783,11 +783,27 @@ function addProd(data){
   renderThumb(id);
   renum(); recalc();
 }
-function margenParaPrecio(cuV, precioDeseado){
-  // despeja el margen % necesario para que el precio unitario (sin IGV) sea exactamente el deseado
-  if(!(precioDeseado>0) || precioDeseado<=cuV) return null; // no se puede vender bajo el costo
-  const mg = 1 - (cuV/precioDeseado);
+function margenParaPrecio(cuV, precioSinIGVDeseado){
+  if(!(precioSinIGVDeseado>0) || precioSinIGVDeseado<=cuV) return null;
+  const mg = 1 - (cuV/precioSinIGVDeseado);
   return Math.min(r3(mg*100), 90);
+}
+function mejorPvUParaTotalFinal(cuV, qty, totalFinalDeseado){
+  // Busca, entre los TOTALES DE LÍNEA (sin IGV) posibles a 1 centavo, cuál deja el TOTAL FINAL
+  // (con IGV, tratando esta línea de forma aislada) lo más cerca posible del objetivo.
+  // Se busca sobre el total (no sobre el precio unitario) porque con cantidad > 1 el precio
+  // unitario no puede moverse en pasos de 1 centavo sin saltarse combinaciones válidas del total.
+  const base = r2(totalFinalDeseado/(1+IGV));
+  let mejor = null, mejorDist = Infinity;
+  for(let d=-15; d<=15; d++){
+    const totV = r2(base + d*0.01);
+    if(totV<=cuV*qty) continue;
+    const igv = r2(totV*IGV);
+    const total = r2(totV+igv);
+    const dist = Math.abs(total-totalFinalDeseado);
+    if(dist<mejorDist){ mejorDist=dist; mejor={pvU: totV/qty, total, dist}; }
+  }
+  return mejor;
 }
 function aplicarPrecioDeseado(id){
   const mon = document.getElementById('moneda').value, tc = fx(document.getElementById('tc').value)||1;
@@ -796,14 +812,18 @@ function aplicarPrecioDeseado(id){
   let cuV = cu;
   if(p.monCosto==='USD' && mon==='PEN') cuV = cu*tc;
   if(p.monCosto==='PEN' && mon==='USD') cuV = cu/tc;
-  const precioDeseado = fx(document.getElementById('p'+id+'pdes').value);
-  const nuevoMargen = margenParaPrecio(cuV, precioDeseado);
-  if(nuevoMargen===null){
-    alert('El precio deseado debe ser mayor al costo unitario ('+fmt(r2(cuV),mon)+'). Ajusta el precio o el costo e inténtalo de nuevo.');
+  const totalFinalDeseado = fx(document.getElementById('p'+id+'pdes').value) * p.qty; // precio FINAL (con IGV) x cantidad = total de línea deseado
+  const mejor = mejorPvUParaTotalFinal(cuV, p.qty, totalFinalDeseado);
+  if(!mejor){
+    alert('El precio deseado debe ser mayor al costo unitario ('+fmt(r2(cuV),mon)+' + IGV). Ajusta el precio o el costo e inténtalo de nuevo.');
     return;
   }
+  const nuevoMargen = margenParaPrecio(cuV, mejor.pvU);
   document.getElementById('p'+id+'mg').value = nuevoMargen;
   recalc();
+  if(mejor.dist>0.001){
+    alert('Con IGV de 18%, ese monto final exacto no es matemáticamente alcanzable (le pasa a cualquier sistema de facturación).\n\nSe aplicó el más cercano posible: total final de línea = '+fmt(mejor.total,mon)+' (tu objetivo era '+fmt(r2(totalFinalDeseado),mon)+').');
+  }
 }
 function redondearAlSol(id){
   const mon = document.getElementById('moneda').value, tc = fx(document.getElementById('tc').value)||1;
@@ -813,15 +833,19 @@ function redondearAlSol(id){
   if(p.monCosto==='USD' && mon==='PEN') cuV = cu*tc;
   if(p.monCosto==='PEN' && mon==='USD') cuV = cu/tc;
   const r = calcProd(p, mon, tc);
-  const totalRedondeado = Math.round(r.totV); // al sol (o dólar) más cercano
-  const precioUnitDeseado = totalRedondeado / p.qty;
-  const nuevoMargen = margenParaPrecio(cuV, precioUnitDeseado);
-  if(nuevoMargen===null){
+  const totalFinalActual = r2(r.totV*(1+IGV));
+  const totalFinalObjetivo = Math.round(totalFinalActual); // al sol (o dólar) más cercano
+  const mejor = mejorPvUParaTotalFinal(cuV, p.qty, totalFinalObjetivo);
+  if(!mejor){
     alert('No se puede redondear: el precio resultante quedaría por debajo del costo. Revisa el costo o el margen actual.');
     return;
   }
+  const nuevoMargen = margenParaPrecio(cuV, mejor.pvU);
   document.getElementById('p'+id+'mg').value = nuevoMargen;
   recalc();
+  if(mejor.dist>0.001){
+    alert('El sol exacto no es alcanzable con IGV de 18%. Se aplicó lo más cercano posible: total final de línea = '+fmt(mejor.total,mon)+'.');
+  }
 }
 function delProd(id){
   document.getElementById('p'+id).remove();
