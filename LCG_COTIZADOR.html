@@ -765,12 +765,63 @@ function addProd(data){
       <div><label>Adicional (x unid.)</label><input type="number" id="p${id}adic" value="${d.adic}" step="0.01" min="0" placeholder="0" oninput="recalc()"></div>
       <div><label>Cantidad</label><input type="number" id="p${id}qty" value="${d.qty}" step="1" min="1" oninput="recalc()"></div>
     </div>
+    <div class="grid g4" style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)">
+      <div style="grid-column:span 2"><label>Precio Unit. deseado (sin IGV, opcional)</label>
+        <div style="display:flex;gap:6px">
+          <input type="number" id="p${id}pdes" step="0.01" min="0" placeholder="Ej: 50.00" style="flex:1">
+          <button type="button" class="b-line" style="white-space:nowrap" onclick="aplicarPrecioDeseado(${id})">↺ Aplicar</button>
+        </div>
+      </div>
+      <div style="grid-column:span 2;display:flex;align-items:flex-end">
+        <button type="button" class="b-line" style="width:100%" onclick="redondearAlSol(${id})">↻ Redondear total de línea al sol más cercano</button>
+      </div>
+    </div>
     <div class="chips" id="p${id}chips"></div>
   </div>`;
   document.getElementById('prods').appendChild(div);
   if(d.img) PRODIMG[id]=d.img;
   renderThumb(id);
   renum(); recalc();
+}
+function margenParaPrecio(cuV, precioDeseado){
+  // despeja el margen % necesario para que el precio unitario (sin IGV) sea exactamente el deseado
+  if(!(precioDeseado>0) || precioDeseado<=cuV) return null; // no se puede vender bajo el costo
+  const mg = 1 - (cuV/precioDeseado);
+  return Math.min(r3(mg*100), 90);
+}
+function aplicarPrecioDeseado(id){
+  const mon = document.getElementById('moneda').value, tc = fx(document.getElementById('tc').value)||1;
+  const p = getProd(id);
+  const cu = p.costo + p.logi + p.mo + p.adic;
+  let cuV = cu;
+  if(p.monCosto==='USD' && mon==='PEN') cuV = cu*tc;
+  if(p.monCosto==='PEN' && mon==='USD') cuV = cu/tc;
+  const precioDeseado = fx(document.getElementById('p'+id+'pdes').value);
+  const nuevoMargen = margenParaPrecio(cuV, precioDeseado);
+  if(nuevoMargen===null){
+    alert('El precio deseado debe ser mayor al costo unitario ('+fmt(r2(cuV),mon)+'). Ajusta el precio o el costo e inténtalo de nuevo.');
+    return;
+  }
+  document.getElementById('p'+id+'mg').value = nuevoMargen;
+  recalc();
+}
+function redondearAlSol(id){
+  const mon = document.getElementById('moneda').value, tc = fx(document.getElementById('tc').value)||1;
+  const p = getProd(id);
+  const cu = p.costo + p.logi + p.mo + p.adic;
+  let cuV = cu;
+  if(p.monCosto==='USD' && mon==='PEN') cuV = cu*tc;
+  if(p.monCosto==='PEN' && mon==='USD') cuV = cu/tc;
+  const r = calcProd(p, mon, tc);
+  const totalRedondeado = Math.round(r.totV); // al sol (o dólar) más cercano
+  const precioUnitDeseado = totalRedondeado / p.qty;
+  const nuevoMargen = margenParaPrecio(cuV, precioUnitDeseado);
+  if(nuevoMargen===null){
+    alert('No se puede redondear: el precio resultante quedaría por debajo del costo. Revisa el costo o el margen actual.');
+    return;
+  }
+  document.getElementById('p'+id+'mg').value = nuevoMargen;
+  recalc();
 }
 function delProd(id){
   document.getElementById('p'+id).remove();
@@ -830,8 +881,8 @@ function calcProd(p, mon, tc){
   const pv = mg<1 ? cuV/(1-mg) : cuV;          // PV unit sin IGV, precisión completa
   return {cuV, qty:p.qty, pvU:r2(pv), totV:r2(pv*p.qty), totC:r2(cuV*p.qty)};
 }
-function r2(n){return Math.round((n + Number.EPSILON) * 100) / 100}
-function r3(n){return Math.round((n + Number.EPSILON) * 1000) / 1000}
+function r2(n){return Math.round(Number((n*100).toFixed(4)))/100}
+function r3(n){return Math.round(Number((n*1000).toFixed(4)))/1000}
 function fmt(n, mon){
   const s = (mon==='USD'?'US$ ':'S/ ');
   return s + n.toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2});
