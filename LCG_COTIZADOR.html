@@ -299,6 +299,7 @@ body.preview{background:#7d8aa0}
     <div><label>Nombre de la lista Clientes</label><input id="spListCli" value="LCG_Clientes"></div>
     <div><label>Nombre de la lista Historial</label><input id="spListHist" value="LCG_Historial_Cotizaciones"></div>
     <div style="grid-column:span 2"><label>Nombre de la lista Detalle por producto</label><input id="spListDet" value="LCG_Detalle_Cotizacion"></div>
+    <div style="grid-column:span 2"><label>Nombre de la lista Mayoristas</label><input id="spListMay" value="LCG_Mayoristas"></div>
   </div>
   <div class="hint" style="margin:-4px 0 14px">
     Ver la guía <b>LCG_GUIA_CONEXION_SHAREPOINT.md</b> para crear el "Client ID" (registro de app, una sola vez, lo hace el administrador del tenant). Sin esto, el cotizador sigue funcionando en modo local (importar/copiar manual), tal como hasta ahora.
@@ -392,7 +393,8 @@ let prodSeq = 0;
 
 /* ================= SHAREPOINT (Clientes en vivo + Historial automático) ================= */
 const SP_SCOPES = ['Sites.ReadWrite.All'];
-let spMsal = null, spAccount = null, spSiteId = null, spListCliId = null, spListHistId = null, spListDetId = null;
+let spMsal = null, spAccount = null, spSiteId = null, spListCliId = null, spListHistId = null, spListDetId = null, spListMayId = null;
+let spMayoristasItems = [];
 
 function spConfig(){
   try{ return JSON.parse(localStorage.getItem('lcg_sp_config')||'null'); }catch(e){ return null; }
@@ -402,7 +404,7 @@ function guardarConfigSP(){
     clientId: spClientId.value.trim(), tenant: spTenant.value.trim(),
     host: spHost.value.trim().replace(/^https?:\/\//,''), path: spPath.value.trim(),
     listCli: spListCli.value.trim()||'LCG_Clientes', listHist: spListHist.value.trim()||'LCG_Historial_Cotizaciones',
-    listDet: spListDet.value.trim()||'LCG_Detalle_Cotizacion'
+    listDet: spListDet.value.trim()||'LCG_Detalle_Cotizacion', listMay: spListMay.value.trim()||'LCG_Mayoristas'
   };
   if(!cfg.clientId||!cfg.tenant||!cfg.host||!cfg.path){ spStatusMsg.textContent='Faltan campos obligatorios (Client ID, Tenant, Hostname, Ruta).'; spStatusMsg.style.color='#c0392b'; return; }
   localStorage.setItem('lcg_sp_config', JSON.stringify(cfg));
@@ -414,6 +416,7 @@ function abrirSP(){
   spClientId.value=cfg.clientId||''; spTenant.value=cfg.tenant||''; spHost.value=cfg.host||'';
   spPath.value=cfg.path||''; spListCli.value=cfg.listCli||'LCG_Clientes'; spListHist.value=cfg.listHist||'LCG_Historial_Cotizaciones';
   spListDet.value=cfg.listDet||'LCG_Detalle_Cotizacion';
+  spListMay.value=cfg.listMay||'LCG_Mayoristas';
   spStatusMsg.textContent = spAccount ? ('Conectado como '+spAccount.username) : 'Sin conectar. El cotizador funciona en modo local (importar/copiar manual) mientras tanto.';
   spStatusMsg.style.color = spAccount ? 'var(--ok)' : 'var(--mut)';
   dlgSP.showModal();
@@ -447,6 +450,7 @@ async function conectarSP(){
     spSetEstado('conectando…', false);
     await spResolverSitioYListas();
     await cargarClientesSP();
+    await cargarMayoristasSP();
     spSetEstado('en vivo ✓', true);
     spStatusMsg.textContent='Conectado como '+spAccount.username+'. Clientes cargados en vivo desde SharePoint.';
   }catch(e){
@@ -487,10 +491,12 @@ async function spResolverSitioYListas(){
   const lCli = listas.value.find(l=>l.displayName===cfg.listCli);
   const lHist = listas.value.find(l=>l.displayName===cfg.listHist);
   const lDet = listas.value.find(l=>l.displayName===cfg.listDet);
+  const lMay = listas.value.find(l=>l.displayName===cfg.listMay);
   if(!lCli) throw new Error('No se encontró la lista "'+cfg.listCli+'" en el sitio.');
   if(!lHist) throw new Error('No se encontró la lista "'+cfg.listHist+'" en el sitio.');
   if(!lDet) throw new Error('No se encontró la lista "'+cfg.listDet+'" en el sitio.');
-  spListCliId = lCli.id; spListHistId = lHist.id; spListDetId = lDet.id;
+  if(!lMay) throw new Error('No se encontró la lista "'+cfg.listMay+'" en el sitio.');
+  spListCliId = lCli.id; spListHistId = lHist.id; spListDetId = lDet.id; spListMayId = lMay.id;
 }
 async function cargarClientesSP(){
   let url = '/sites/'+spSiteId+'/lists/'+spListCliId+'/items?expand=fields&$top=500';
@@ -547,6 +553,47 @@ async function registrarDetalleSP(fila, lineas){
   }
   return ok;
 }
+async function cargarMayoristasSP(){
+  const data = await spGraph('/sites/'+spSiteId+'/lists/'+spListMayId+'/items?expand=fields&$top=200');
+  spMayoristasItems = data.value.map(it=>({ id: it.id, title: (it.fields||{}).Title||'' })).filter(x=>x.title);
+  const nombres = spMayoristasItems.map(x=>x.title);
+  MAYORISTAS = nombres.concat('Otro');
+  try{ localStorage.setItem('lcg_mayoristas', JSON.stringify(MAYORISTAS)); }catch(e){}
+  prodIds().forEach(id=>{
+    const sel=document.getElementById('p'+id+'may'); if(!sel) return;
+    const cur=sel.value;
+    sel.innerHTML=MAYORISTAS.map(m=>'<option'+(m===cur?' selected':'')+'>'+esc(m)+'</option>').join('');
+    if(!MAYORISTAS.includes(cur)) sel.value=MAYORISTAS[0];
+  });
+}
+function generarIdCliente(){
+  return 'CLI-' + Date.now().toString(36).toUpperCase();
+}
+async function asegurarClienteSP(c){
+  // c: {empresa,ruc,contacto,correo,telefono,direccion,distrito}
+  if(!c.empresa) return '';
+  const existente = CLIENTES.find(x=>x.empresa.toLowerCase().trim()===c.empresa.toLowerCase().trim());
+  if(existente) return existente.id_cliente || '';
+  if(!spAccount || !spListCliId) return ''; // modo local: no hay dónde crearlo, sigue funcionando igual que antes
+  const nuevoId = generarIdCliente();
+  try{
+    await spGraph('/sites/'+spSiteId+'/lists/'+spListCliId+'/items', {
+      method:'POST',
+      body: JSON.stringify({ fields: {
+        Title: c.empresa, ID_Cliente: nuevoId, RUC: c.ruc||'', Contacto: c.contacto||'',
+        Correo: c.correo||'', Telefono: c.telefono||'', Direccion: c.direccion||'', Distrito: c.distrito||'',
+        Cuenta_Estrategica: false
+      }})
+    });
+    CLIENTES.push({ empresa:c.empresa, ruc:c.ruc||'', contacto:c.contacto||'', correo:c.correo||'',
+                     telefono:c.telefono||'', direccion:c.direccion||'', distrito:c.distrito||'', id_cliente:nuevoId });
+    buildDatalist();
+    return nuevoId;
+  }catch(e){
+    console.error('No se pudo crear el cliente nuevo en LCG-CLIENTES:', e);
+    return '';
+  }
+}
 async function intentarReconectarSP(){
   const cfg = spConfig();
   if(!cfg || !cfg.clientId) return;
@@ -558,6 +605,7 @@ async function intentarReconectarSP(){
     spSetEstado('conectando…', false);
     await spResolverSitioYListas();
     await cargarClientesSP();
+    await cargarMayoristasSP();
     spSetEstado('en vivo ✓', true);
   }catch(e){ console.warn('Reconexión SharePoint no disponible:', e.message); spSetEstado('desconectado', false); }
 }
@@ -1085,15 +1133,19 @@ function docFileName(){
   const emp=(s.cliente.empresa||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\w -]/g,'').trim().replace(/\s+/g,'_').slice(0,40);
   return 'COT_'+(s.codigo||'sin-codigo').replace(/[^\w-]/g,'_')+(emp?'_'+emp:'');
 }
-function filaHistorial(){
+function filaHistorial(idClienteOverride){
   const s=getState(), mon=s.moneda, tc=fx(s.tc)||1;
   const rs=s.prods.filter(p=>p.desc).map(p=>Object.assign({}, p, calcProd(p,mon,tc)));
   if(!rs.length) return null;
   const t=totales(rs);
   const inv=r2(rs.reduce((a,r)=>a+r.totC,0));
   const util=r2(t.sub-inv), com=r2(util*COMISION);
-  const cli = CLIENTES.find(x=>x.empresa.toLowerCase()===String(s.cliente.empresa||'').toLowerCase());
-  const fila = { codigo:s.codigo, cliente:s.cliente.empresa, id_cliente:cli&&cli.id_cliente||'', vendedor:s.consultor,
+  let idCli = idClienteOverride;
+  if(idCli===undefined){
+    const cli = CLIENTES.find(x=>x.empresa.toLowerCase()===String(s.cliente.empresa||'').toLowerCase());
+    idCli = cli&&cli.id_cliente||'';
+  }
+  const fila = { codigo:s.codigo, cliente:s.cliente.empresa, id_cliente:idCli, vendedor:s.consultor,
            fecha:s.fecha, moneda:mon, tc:tc, venta:r2(t.sub), costo:inv, utilidad:util,
            comision_pct:COMISION, comision:com, estado:'Cotizado' };
   const lineas = rs.map(r=>({
@@ -1110,8 +1162,10 @@ async function descargarPDF(){
   window.print();
   setTimeout(()=>document.title=t,800);
   localStorage.setItem('lcg_last_code',code);
-  // Registro automático de costo/utilidad/comisión (encabezado) y detalle por producto en SharePoint
-  const h = filaHistorial();
+  // Asegura que el cliente exista en LCG-CLIENTES (lo crea automáticamente si es nuevo), luego registra historial + detalle
+  const s0 = getState();
+  const idCli = await asegurarClienteSP(s0.cliente);
+  const h = filaHistorial(idCli);
   if(h){
     if(spAccount){
       const ok = await registrarHistorialSP(h.fila);
@@ -1184,12 +1238,36 @@ function mayRowHTML(m){
   +'<button class="b-danger" onclick="this.parentElement.remove()">✕</button></div>';
 }
 function addMayRow(){document.getElementById('mayRows').insertAdjacentHTML('beforeend',mayRowHTML(''));}
-function saveMay(){
+async function saveMay(){
   const list=[...document.querySelectorAll('#mayRows > div')].map(r=>r.querySelector('.mn').value.trim()).filter(Boolean);
   if(!list.length){alert('Debe haber al menos un proveedor.');return;}
   if(!list.includes('Otro')) list.push('Otro');
-  MAYORISTAS=list;
-  localStorage.setItem('lcg_mayoristas',JSON.stringify(list));
+  const reales = list.filter(m=>m!=='Otro');
+
+  if(spAccount && spListMayId){
+    const actualesNorm = spMayoristasItems.map(x=>x.title.toLowerCase());
+    const nuevosNorm = reales.map(m=>m.toLowerCase());
+    const aCrear = reales.filter(m=>!actualesNorm.includes(m.toLowerCase()));
+    const aBorrar = spMayoristasItems.filter(x=>!nuevosNorm.includes(x.title.toLowerCase()));
+    try{
+      for(const nombre of aCrear){
+        await spGraph('/sites/'+spSiteId+'/lists/'+spListMayId+'/items', { method:'POST', body: JSON.stringify({ fields: { Title: nombre } }) });
+      }
+      for(const item of aBorrar){
+        await spGraph('/sites/'+spSiteId+'/lists/'+spListMayId+'/items/'+item.id, { method:'DELETE' });
+      }
+      await cargarMayoristasSP();
+    }catch(e){
+      console.error('No se pudo sincronizar la lista de proveedores con SharePoint:', e);
+      alert('Se guardó localmente, pero hubo un problema sincronizando con SharePoint. Revisa la conexión e inténtalo de nuevo.');
+      MAYORISTAS=list;
+      localStorage.setItem('lcg_mayoristas',JSON.stringify(list));
+    }
+  } else {
+    MAYORISTAS=list;
+    localStorage.setItem('lcg_mayoristas',JSON.stringify(list));
+  }
+
   prodIds().forEach(id=>{
     const sel=document.getElementById('p'+id+'may'); const cur=sel.value;
     sel.innerHTML=MAYORISTAS.map(m=>'<option'+(m===cur?' selected':'')+'>'+esc(m)+'</option>').join('');
