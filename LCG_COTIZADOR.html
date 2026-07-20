@@ -827,13 +827,18 @@ function calcProd(p, mon, tc){
   if(p.monCosto==='USD' && mon==='PEN') cuV = cu*tc;
   if(p.monCosto==='PEN' && mon==='USD') cuV = cu/tc;
   const mg = Math.min(p.margen,90)/100;
-  const pv = mg<1 ? cuV/(1-mg) : cuV;          // PV unit sin IGV
-  return {cuV, qty:p.qty, pvU:r2(pv), totV:r2(r2(pv)*p.qty), totC:r2(cuV*p.qty)};
+  const pv = mg<1 ? cuV/(1-mg) : cuV;          // PV unit sin IGV, precisión completa
+  return {cuV, qty:p.qty, pvU:r2(pv), totV:r2(pv*p.qty), totC:r2(cuV*p.qty)};
 }
 function r2(n){return Math.round(n*100)/100}
+function r3(n){return Math.round(n*1000)/1000}
 function fmt(n, mon){
   const s = (mon==='USD'?'US$ ':'S/ ');
   return s + n.toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function fmt3(n, mon){
+  const s = (mon==='USD'?'US$ ':'S/ ');
+  return s + n.toLocaleString('es-PE',{minimumFractionDigits:3,maximumFractionDigits:3});
 }
 function totales(rs){
   const sub = r2(rs.reduce((s,r)=>s+r.totV,0));
